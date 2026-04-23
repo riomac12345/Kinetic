@@ -100,6 +100,13 @@ input[type=number] { -moz-appearance: textfield; }
   border-radius: 4px;
 }
 
+/* ── Sidebar layout ── */
+@media (min-width: 768px) {
+  .main-content {
+    padding-left: 260px;
+  }
+}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }

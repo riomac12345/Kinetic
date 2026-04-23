@@ -37,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
         <Sidebar />
-        <main className="min-h-dvh md:pl-[260px] relative z-[1]">
+        <main className="main-content min-h-dvh relative z-[1]">
           <div className="max-w-2xl mx-auto">
             {children}
           </div>

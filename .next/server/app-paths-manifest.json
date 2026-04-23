@@ -1,8 +1,7 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
   "/dashboard/page": "app/dashboard/page.js",
+  "/skills/page": "app/skills/page.js",
+  "/profile/[username]/page": "app/profile/[username]/page.js",
   "/progress/page": "app/progress/page.js",
-  "/feed/page": "app/feed/page.js",
-  "/leaderboard/page": "app/leaderboard/page.js",
   "/plan/page": "app/plan/page.js"
 }
