@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-base: #07051a;
+  --color-surface: #0e0b24;
+  --color-elevated: #15122d;
+  --color-border: rgba(124, 90, 246, 0.1);
+  --color-accent: #7c5af6;
+  --color-accent-hover: #6646e0;
+  --grid-line: rgba(100, 60, 220, 0.055);
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+body {
+  background-color: var(--color-base);
+  color: #ffffff;
+  min-height: 100dvh;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+/* ── Keyframes ── */
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideInFromBottom {
+  from { opacity: 0; transform: translateY(44px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%      { transform: translateY(-7px); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 24px rgba(124,90,246,0.35), 0 4px 16px rgba(0,0,0,0.6); }
+  50%      { box-shadow: 0 0 48px rgba(124,90,246,0.65), 0 4px 16px rgba(0,0,0,0.6); }
+}
+
+@keyframes borderGlow {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(124,90,246,0.15); }
+  50%      { box-shadow: inset 0 0 0 1px rgba(124,90,246,0.45); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.93); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmerSweep {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes orb-drift {
+  0%, 100% { transform: translateX(-50%) translateY(0px) scale(1); }
+  50%       { transform: translateX(-50%) translateY(-12px) scale(1.04); }
+}
+
+/* ── Utility Animation Classes ── */
+
+.anim-fade-up   { animation: fadeInUp 0.5s cubic-bezier(0.25,0.46,0.45,0.94) both; }
+.anim-fade-up-1 { animation: fadeInUp 0.5s 0.06s cubic-bezier(0.25,0.46,0.45,0.94) both; }
+.anim-fade-up-2 { animation: fadeInUp 0.5s 0.13s cubic-bezier(0.25,0.46,0.45,0.94) both; }
+.anim-fade-up-3 { animation: fadeInUp 0.5s 0.21s cubic-bezier(0.25,0.46,0.45,0.94) both; }
+.anim-fade-up-4 { animation: fadeInUp 0.5s 0.30s cubic-bezier(0.25,0.46,0.45,0.94) both; }
+.anim-fade-in   { animation: fadeIn 0.4s ease both; }
+
+.anim-float     { animation: float 4.5s ease-in-out infinite; }
+.anim-glow      { animation: glowPulse 2.5s ease-in-out infinite; }
+.anim-scale-in  { animation: scaleIn 0.32s cubic-bezier(0.34,1.56,0.64,1) both; }
+.anim-slide-up  { animation: slideInFromBottom 0.4s cubic-bezier(0.32,0.72,0,1) both; }
+.anim-border    { animation: borderGlow 3s ease-in-out infinite; }
+
+/* ── Number inputs ── */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+
+/* ── Focus ring ── */
+:focus-visible {
+  outline: 2px solid rgba(124,90,246,0.65);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(124,90,246,0.25); border-radius: 9999px; }

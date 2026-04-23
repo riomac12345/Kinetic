@@ -1,0 +1,1 @@
+self.__REACT_LOADABLE_MANIFEST="{\"components/Sidebar.tsx -> @/lib/supabase/client\":{\"id\":\"components/Sidebar.tsx -> @/lib/supabase/client\",\"files\":[\"static/chunks/_app-pages-browser_lib_supabase_client_ts.js\"]}}"
