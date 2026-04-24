@@ -49,7 +49,7 @@ export default function AuthPage() {
       if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        router.push('/dashboard');
+        window.location.href = '/dashboard';
       } else {
         const trimmedUsername = username.trim().toLowerCase();
         if (!trimmedUsername) throw new Error('Username is required');
