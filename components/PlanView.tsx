@@ -3,6 +3,24 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_FULL   = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -163,10 +181,20 @@ function AddExerciseSheet({
   );
 }
 
+function IconGrip({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor">
+      <circle cx="5" cy="4" r="1.2" /><circle cx="5" cy="8" r="1.2" /><circle cx="5" cy="12" r="1.2" />
+      <circle cx="11" cy="4" r="1.2" /><circle cx="11" cy="8" r="1.2" /><circle cx="11" cy="12" r="1.2" />
+    </svg>
+  );
+}
+
 function ExerciseEditor({
-  pe, onChange, onRemove,
+  pe, onChange, onRemove, dragHandleProps,
 }: {
   pe: PlanExercise; onChange: (updated: PlanExercise) => void; onRemove: () => void;
+  dragHandleProps?: React.HTMLAttributes<HTMLElement>;
 }) {
   const type = pe.exercises.type;
 
@@ -198,10 +226,20 @@ function ExerciseEditor({
       style={{ background: 'rgba(124,90,246,0.07)', border: '1px solid rgba(124,90,246,0.12)' }}
     >
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-semibold text-white" style={{ letterSpacing: '-0.01em' }}>{pe.exercises.name}</p>
+        <div className="flex items-center gap-2 min-w-0">
+          {dragHandleProps && (
+            <span
+              {...dragHandleProps}
+              style={{ color: 'rgba(255,255,255,0.2)', cursor: 'grab', touchAction: 'none', flexShrink: 0, padding: '2px' }}
+            >
+              <IconGrip size={14} />
+            </span>
+          )}
+          <p className="text-sm font-semibold text-white truncate" style={{ letterSpacing: '-0.01em' }}>{pe.exercises.name}</p>
+        </div>
         <button
           onClick={onRemove}
-          className="p-1 transition-colors"
+          className="p-1 transition-colors flex-shrink-0"
           style={{ color: 'rgba(255,255,255,0.3)' }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#f87171'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.3)'; }}
@@ -227,6 +265,33 @@ function ExerciseEditor({
   );
 }
 
+function SortableExerciseItem({
+  pe, onChange, onRemove,
+}: {
+  pe: PlanExercise; onChange: (updated: PlanExercise) => void; onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: pe.id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.45 : 1,
+        position: 'relative',
+        zIndex: isDragging ? 10 : 0,
+      }}
+    >
+      <ExerciseEditor
+        pe={pe}
+        onChange={onChange}
+        onRemove={onRemove}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
+    </div>
+  );
+}
+
 export default function PlanView({ userId, plan: initialPlan, exercises: initialExercises }: Props) {
   const router = useRouter();
   const supabase = createClient();
@@ -238,6 +303,23 @@ export default function PlanView({ userId, plan: initialPlan, exercises: initial
   const [saving, setSaving] = useState(false);
   const [creatingPlan, setCreatingPlan] = useState(false);
   const [exercises, setExercises] = useState<Exercise[]>(initialExercises);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setLocalDays(prev => prev.map((d, i) => {
+      if (i !== selectedDay) return d;
+      const oldIdx = d.plan_exercises.findIndex(pe => pe.id === active.id);
+      const newIdx = d.plan_exercises.findIndex(pe => pe.id === over.id);
+      return { ...d, plan_exercises: arrayMove(d.plan_exercises, oldIdx, newIdx) };
+    }));
+  }
 
   async function createExercise(name: string, type: string): Promise<Exercise | null> {
     const { data, error } = await supabase
@@ -329,7 +411,7 @@ export default function PlanView({ userId, plan: initialPlan, exercises: initial
 
         if (!day.is_rest && day.plan_exercises.length > 0) {
           await supabase.from('plan_exercises').insert(
-            day.plan_exercises.map(pe => ({
+            day.plan_exercises.map((pe, idx) => ({
               plan_day_id: dayId,
               exercise_id: pe.exercises.id,
               sets: pe.sets ?? 3,
@@ -337,6 +419,7 @@ export default function PlanView({ userId, plan: initialPlan, exercises: initial
               weight: pe.weight,
               hold_time: pe.hold_time,
               rest_timer_seconds: pe.rest_timer_seconds ?? 90,
+              sort_order: idx,
             }))
           );
         }
@@ -488,19 +571,23 @@ export default function PlanView({ userId, plan: initialPlan, exercises: initial
         </div>
       ) : (
         <>
-          <div className="flex flex-col gap-2.5 mb-4">
-            {today.plan_exercises.length === 0 && (
-              <p className="text-sm text-center py-6" style={{ color: 'rgba(255,255,255,0.35)' }}>No exercises yet. Add one below.</p>
-            )}
-            {today.plan_exercises.map((pe, i) => (
-              <ExerciseEditor
-                key={pe.id}
-                pe={pe}
-                onChange={updated => updateExercise(selectedDay, i, updated)}
-                onRemove={() => removeExercise(selectedDay, i)}
-              />
-            ))}
-          </div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={today.plan_exercises.map(pe => pe.id)} strategy={verticalListSortingStrategy}>
+              <div className="flex flex-col gap-2.5 mb-4">
+                {today.plan_exercises.length === 0 && (
+                  <p className="text-sm text-center py-6" style={{ color: 'rgba(255,255,255,0.35)' }}>No exercises yet. Add one below.</p>
+                )}
+                {today.plan_exercises.map((pe, i) => (
+                  <SortableExerciseItem
+                    key={pe.id}
+                    pe={pe}
+                    onChange={updated => updateExercise(selectedDay, i, updated)}
+                    onRemove={() => removeExercise(selectedDay, i)}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
           <button
             onClick={() => setShowAddExercise(true)}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-medium"

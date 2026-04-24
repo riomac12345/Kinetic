@@ -148,7 +148,7 @@ function ExerciseRow({ name, type, sets, reps, weight, holdTime, index, done, on
       <button
         onClick={onDone}
         style={{
-          width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+          width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: done ? '#7c5af6' : 'transparent',
           border: done ? '2px solid #7c5af6' : '2px solid rgba(255,255,255,0.15)',
@@ -156,10 +156,8 @@ function ExerciseRow({ name, type, sets, reps, weight, holdTime, index, done, on
           boxShadow: done ? '0 0 14px rgba(124,90,246,0.6)' : 'none',
           transition: 'all 220ms cubic-bezier(0.34,1.56,0.64,1)',
           cursor: 'pointer',
+          touchAction: 'manipulation',
         }}
-        onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.85)')}
-        onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
-        onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
       >
         {done && <IconCheck size={12} />}
       </button>
@@ -270,18 +268,18 @@ function RestDay() {
   );
 }
 
+type PlanExerciseItem = {
+  id: string; sets: number; reps: number | null; weight: number | null;
+  hold_time: number | null; rest_timer_seconds: number;
+  exercises: { id: string; name: string; type: string };
+};
+type PlanDayItem = {
+  id: string; day_of_week: number; is_rest: boolean; plan_exercises: PlanExerciseItem[];
+};
+
 type Props = {
   profile: { username: string; name: string | null } | null;
-  plan: { id: string; name: string; plan_days: unknown[] } | null;
-  todaysPlanDay: {
-    id: string; is_rest: boolean;
-    plan_exercises: Array<{
-      id: string; sets: number; reps: number | null; weight: number | null;
-      hold_time: number | null; rest_timer_seconds: number;
-      exercises: { id: string; name: string; type: string };
-    }>;
-  } | null;
-  dayOfWeek: number;
+  plan: { id: string; name: string; plan_days: PlanDayItem[] } | null;
   todaySessionId: string | null;
   loggedExerciseIds?: string[];
   totalDaysLogged?: number;
@@ -352,11 +350,23 @@ function FatigueModal({ sessionId, onDone }: { sessionId: string; onDone: () => 
   );
 }
 
-export default function DashboardView({ profile, plan, todaysPlanDay, dayOfWeek, todaySessionId, loggedExerciseIds = [], userId, totalDaysLogged = 0 }: Props & { userId?: string; totalDaysLogged?: number }) {
+export default function DashboardView({ profile, plan, todaySessionId, loggedExerciseIds = [], userId, totalDaysLogged = 0 }: Props & { userId?: string; totalDaysLogged?: number }) {
   const displayName = profile?.name ?? profile?.username ?? 'there';
+
+  // Compute day-of-week client-side to respect user's local timezone
+  const [dayOfWeek, setDayOfWeek] = useState<number>(-1);
+  const [todaysPlanDay, setTodaysPlanDay] = useState<PlanDayItem | null>(null);
+
+  useEffect(() => {
+    const d = (new Date().getDay() + 6) % 7; // Mon=0 … Sun=6
+    setDayOfWeek(d);
+    const found = plan?.plan_days?.find(pd => pd.day_of_week === d) ?? null;
+    setTodaysPlanDay(found);
+  }, [plan]);
+
   const exercises = todaysPlanDay?.plan_exercises ?? [];
   const isRest = todaysPlanDay?.is_rest ?? false;
-  const [activeLog, setActiveLog] = useState<typeof exercises[0] | null>(null);
+  const [activeLog, setActiveLog] = useState<PlanExerciseItem | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(todaySessionId);
   const [loggedIds, setLoggedIds] = useState<Set<string>>(new Set(loggedExerciseIds));
 
@@ -495,7 +505,7 @@ export default function DashboardView({ profile, plan, todaysPlanDay, dayOfWeek,
               textTransform: 'uppercase', marginBottom: 4,
               color: 'rgba(167,139,248,0.55)',
             }}>
-              {DAY_NAMES[dayOfWeek]}
+              {dayOfWeek >= 0 ? DAY_NAMES[dayOfWeek] : '—'}
             </p>
             <p style={{ fontSize: 16, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em' }}>
               {!plan ? 'Get started' : isRest ? 'Rest Day' : exercises.length > 0 ? plan.name : 'No workout scheduled'}

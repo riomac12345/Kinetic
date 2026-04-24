@@ -8,8 +8,6 @@ export default async function DashboardPage() {
 
   if (!user) redirect('/auth');
 
-  const dayOfWeek = (new Date().getDay() + 6) % 7;
-
   const today = new Date().toISOString().split('T')[0];
 
   const [{ data: profile }, { data: plan }, { data: todaySession }, { data: sessionDates }] = await Promise.all([
@@ -25,6 +23,7 @@ export default async function DashboardPage() {
           is_rest,
           plan_exercises (
             id,
+            sort_order,
             sets,
             reps,
             weight,
@@ -56,9 +55,14 @@ export default async function DashboardPage() {
 
   const totalDaysLogged = sessionDates?.length ?? 0;
 
-  const todaysPlanDay = plan?.plan_days?.find(
-    (d: { day_of_week: number }) => d.day_of_week === dayOfWeek
-  ) ?? null;
+  // Sort plan_exercises by sort_order so dashboard respects saved order
+  if (plan?.plan_days) {
+    for (const day of plan.plan_days as any[]) {
+      if (day.plan_exercises) {
+        day.plan_exercises.sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      }
+    }
+  }
 
   // Fetch which exercises were already logged in today's session
   let loggedExerciseIds: string[] = [];
@@ -73,9 +77,7 @@ export default async function DashboardPage() {
   return (
     <DashboardView
       profile={profile}
-      plan={plan ?? null}
-      todaysPlanDay={todaysPlanDay as any}
-      dayOfWeek={dayOfWeek}
+      plan={plan as any ?? null}
       todaySessionId={todaySession?.id ?? null}
       loggedExerciseIds={loggedExerciseIds}
       userId={user.id}
