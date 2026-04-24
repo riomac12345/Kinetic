@@ -393,6 +393,7 @@ function WellnessQuickLog({ userId, existing }: { userId?: string; existing: Wel
   const [lunch, setLunch] = useState(existing?.food_lunch ?? '');
   const [dinner, setDinner] = useState(existing?.food_dinner ?? '');
   const [preClimb, setPreClimb] = useState(existing?.food_pre_climb ?? '');
+  const [climbStrength, setClimbStrength] = useState<number | null>(existing?.climb_strength ?? null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -407,7 +408,8 @@ function WellnessQuickLog({ userId, existing }: { userId?: string; existing: Wel
     breakfast !== (existing?.food_breakfast ?? '') ||
     lunch !== (existing?.food_lunch ?? '') ||
     dinner !== (existing?.food_dinner ?? '') ||
-    preClimb !== (existing?.food_pre_climb ?? '');
+    preClimb !== (existing?.food_pre_climb ?? '') ||
+    climbStrength !== (existing?.climb_strength ?? null);
 
   async function save() {
     if (!userId || !today.current) return;
@@ -420,6 +422,7 @@ function WellnessQuickLog({ userId, existing }: { userId?: string; existing: Wel
       food_lunch: lunch.trim() || null,
       food_dinner: dinner.trim() || null,
       food_pre_climb: preClimb.trim() || null,
+      climb_strength: climbStrength,
     }, { onConflict: 'user_id,date' });
     setSaving(false);
     setSaved(true);
@@ -493,6 +496,45 @@ function WellnessQuickLog({ userId, existing }: { userId?: string; existing: Wel
           <QuickMealInput label="Breakfast" value={breakfast} onChange={setBreakfast} placeholder="oats, eggs…" />
           <QuickMealInput label="Lunch" value={lunch} onChange={setLunch} placeholder="chicken, rice…" />
           <QuickMealInput label="Dinner" value={dinner} onChange={setDinner} placeholder="pasta, fish…" />
+        </div>
+
+        {/* Climbing strength */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <label style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(167,139,248,0.5)' }}>
+              Climbing strength
+            </label>
+            {climbStrength != null ? (
+              <button onClick={() => setClimbStrength(null)} style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                clear
+              </button>
+            ) : (
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>optional</span>
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 4 }}>
+            {[1,2,3,4,5,6,7,8,9,10].map(n => {
+              const col = n >= 7 ? '#a78bf8' : n >= 4 ? '#fb923c' : '#f87171';
+              const sel = climbStrength === n;
+              return (
+                <button
+                  key={n}
+                  onClick={() => setClimbStrength(sel ? null : n)}
+                  style={{
+                    padding: '7px 0', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                    background: sel ? `${col}22` : 'rgba(255,255,255,0.03)',
+                    border: sel ? `1px solid ${col}66` : '1px solid rgba(255,255,255,0.06)',
+                    color: sel ? col : 'rgba(255,255,255,0.22)',
+                    cursor: 'pointer', transition: 'all 120ms ease', touchAction: 'manipulation',
+                  }}
+                  onMouseEnter={e => { if (!sel) { (e.currentTarget as HTMLElement).style.background = `${col}18`; (e.currentTarget as HTMLElement).style.color = col; } }}
+                  onMouseLeave={e => { if (!sel) { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.22)'; } }}
+                >
+                  {n}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <button
