@@ -161,7 +161,7 @@ export default function Sidebar() {
       {/* Hamburger — mobile only */}
       <button
         onClick={() => setOpen(!open)}
-        className="md:hidden fixed top-5 left-4 z-50 w-10 h-10 flex items-center justify-center rounded-full"
+        className="fixed top-5 left-4 z-50 w-10 h-10 flex items-center justify-center rounded-full"
         aria-label={open ? 'Close menu' : 'Open menu'}
         style={{
           background: open ? 'rgba(9,7,30,0.97)' : 'rgba(18,14,44,0.93)',
@@ -173,9 +173,9 @@ export default function Sidebar() {
         <HamburgerIcon open={open} />
       </button>
 
-      {/* Backdrop — mobile only */}
+      {/* Backdrop */}
       <div
-        className="md:hidden"
+        className=""
         onClick={() => setOpen(false)}
         style={{
           position: 'fixed',
@@ -191,7 +191,7 @@ export default function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-40 h-full md:sticky md:top-0 md:h-screen md:flex-shrink-0 flex flex-col pt-6 pb-8 px-3 transition-transform duration-[320ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${open ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
+        className={`fixed top-0 left-0 z-40 h-full flex flex-col pt-6 pb-8 px-3 transition-transform duration-[320ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${open ? 'translate-x-0' : '-translate-x-full'}`}
         style={{
           width: '260px',
           background: 'linear-gradient(180deg, #0c0922 0%, #09071e 100%)',
