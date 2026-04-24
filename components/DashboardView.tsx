@@ -277,12 +277,20 @@ type PlanDayItem = {
   id: string; day_of_week: number; is_rest: boolean; plan_exercises: PlanExerciseItem[];
 };
 
+type WellnessLog = {
+  id: string;
+  sleep_hours: number | null;
+  food_note: string | null;
+  climb_strength: number | null;
+};
+
 type Props = {
   profile: { username: string; name: string | null } | null;
   plan: { id: string; name: string; plan_days: PlanDayItem[] } | null;
   todaySessionId: string | null;
   loggedExerciseIds?: string[];
   totalDaysLogged?: number;
+  todayWellness?: WellnessLog | null;
 };
 
 function FatigueModal({ sessionId, onDone }: { sessionId: string; onDone: () => void }) {
@@ -350,7 +358,151 @@ function FatigueModal({ sessionId, onDone }: { sessionId: string; onDone: () => 
   );
 }
 
-export default function DashboardView({ profile, plan, todaySessionId, loggedExerciseIds = [], userId, totalDaysLogged = 0 }: Props & { userId?: string; totalDaysLogged?: number }) {
+function WellnessQuickLog({ userId, existing }: { userId?: string; existing: WellnessLog | null }) {
+  const supabase = createClient();
+  const [sleepHours, setSleepHours] = useState(existing?.sleep_hours?.toString() ?? '');
+  const [foodNote, setFoodNote] = useState(existing?.food_note ?? '');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const today = useRef('');
+  useEffect(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    today.current = `${y}-${m}-${dd}`;
+  }, []);
+
+  const hasDirty =
+    sleepHours !== (existing?.sleep_hours?.toString() ?? '') ||
+    foodNote !== (existing?.food_note ?? '');
+
+  async function save() {
+    if (!userId || !today.current) return;
+    setSaving(true);
+    await supabase.from('wellness_logs').upsert({
+      user_id: userId,
+      date: today.current,
+      sleep_hours: sleepHours ? parseFloat(sleepHours) : null,
+      food_note: foodNote.trim() || null,
+    }, { onConflict: 'user_id,date' });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  return (
+    <div style={{
+      borderRadius: 24, overflow: 'hidden', marginBottom: 16,
+      background: 'linear-gradient(160deg, rgba(20,16,50,0.9) 0%, rgba(14,11,36,0.95) 100%)',
+      border: '1px solid rgba(124,90,246,0.15)',
+      boxShadow: '0 4px 8px rgba(0,0,0,0.6), 0 16px 48px rgba(0,0,0,0.5)',
+    }}>
+      <div style={{
+        padding: '14px 20px',
+        borderBottom: '1px solid rgba(124,90,246,0.08)',
+        background: 'linear-gradient(180deg, rgba(124,90,246,0.06) 0%, transparent 100%)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <div>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(167,139,248,0.55)', marginBottom: 2 }}>Daily log</p>
+          <p style={{ fontSize: 15, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em' }}>
+            {existing ? 'Today logged ✓' : 'Log sleep & food'}
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {saved && (
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#a78bf8' }}>Saved ✓</span>
+          )}
+          <Link
+            href="/daily-log"
+            style={{
+              padding: '6px 12px', borderRadius: 99, fontSize: 11, fontWeight: 700,
+              background: 'rgba(124,90,246,0.1)', border: '1px solid rgba(124,90,246,0.22)',
+              color: '#a78bf8', textDecoration: 'none',
+              transition: 'background 150ms ease',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(124,90,246,0.2)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(124,90,246,0.1)')}
+          >
+            Full log →
+          </Link>
+        </div>
+      </div>
+
+      <div style={{ padding: '16px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {/* Sleep */}
+          <div style={{ flex: '0 0 auto' }}>
+            <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(167,139,248,0.55)', display: 'block', marginBottom: 6 }}>Sleep</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0" max="24" step="0.5"
+                value={sleepHours}
+                onChange={e => setSleepHours(e.target.value)}
+                placeholder="—"
+                style={{
+                  width: 68, padding: '10px 12px',
+                  borderRadius: 14, fontSize: 22, fontWeight: 800,
+                  letterSpacing: '-0.03em', textAlign: 'center',
+                  color: '#ffffff',
+                  background: 'rgba(124,90,246,0.07)',
+                  border: '1px solid rgba(124,90,246,0.16)',
+                  outline: 'none', transition: 'border-color 150ms ease',
+                }}
+                onFocus={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.5)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.16)')}
+              />
+              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)', fontWeight: 600 }}>hrs</span>
+            </div>
+          </div>
+
+          {/* Food */}
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(167,139,248,0.55)', display: 'block', marginBottom: 6 }}>Food</label>
+            <textarea
+              value={foodNote}
+              onChange={e => setFoodNote(e.target.value)}
+              placeholder="What did you eat today?"
+              rows={2}
+              style={{
+                width: '100%', padding: '10px 14px',
+                borderRadius: 14, fontSize: 13, color: '#ffffff',
+                lineHeight: 1.55, resize: 'none',
+                background: 'rgba(124,90,246,0.07)',
+                border: '1px solid rgba(124,90,246,0.16)',
+                outline: 'none', transition: 'border-color 150ms ease',
+              }}
+              onFocus={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.5)')}
+              onBlur={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.16)')}
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={save}
+          disabled={saving || !hasDirty}
+          style={{
+            padding: '12px', borderRadius: 99, fontSize: 13, fontWeight: 700,
+            color: '#ffffff', border: 'none', cursor: 'pointer',
+            background: 'linear-gradient(135deg, #7c5af6 0%, #6646e0 100%)',
+            opacity: saving || !hasDirty ? 0.4 : 1,
+            transition: 'opacity 150ms ease',
+          }}
+          onMouseEnter={e => { if (!saving && hasDirty) (e.currentTarget as HTMLElement).style.opacity = '0.85'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = saving || !hasDirty ? '0.4' : '1'; }}
+        >
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function DashboardView({ profile, plan, todaySessionId, loggedExerciseIds = [], userId, totalDaysLogged = 0, todayWellness = null }: Props & { userId?: string; totalDaysLogged?: number }) {
   const displayName = profile?.name ?? profile?.username ?? 'there';
 
   // Compute day-of-week client-side to respect user's local timezone
@@ -573,6 +725,9 @@ export default function DashboardView({ profile, plan, todaySessionId, loggedExe
           onLogged={id => setLoggedIds(prev => new Set(prev).add(id))}
         />
       )}
+
+      {/* Wellness quick log */}
+      <WellnessQuickLog userId={userId} existing={todayWellness} />
 
       {/* Quick links */}
       <div className="anim-fade-up-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

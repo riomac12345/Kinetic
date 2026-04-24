@@ -10,7 +10,7 @@ export default async function DashboardPage() {
 
   const today = new Date().toISOString().split('T')[0];
 
-  const [{ data: profile }, { data: plan }, { data: todaySession }, { data: sessionDates }] = await Promise.all([
+  const [{ data: profile }, { data: plan }, { data: todaySession }, { data: sessionDates }, { data: todayWellness }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
     supabase
       .from('training_plan')
@@ -51,6 +51,12 @@ export default async function DashboardPage() {
       .from('sessions')
       .select('date', { count: 'exact' })
       .eq('user_id', user.id),
+    supabase
+      .from('wellness_logs')
+      .select('id, sleep_hours, food_note, climb_strength')
+      .eq('user_id', user.id)
+      .eq('date', today)
+      .single(),
   ]);
 
   const totalDaysLogged = sessionDates?.length ?? 0;
@@ -82,6 +88,7 @@ export default async function DashboardPage() {
       loggedExerciseIds={loggedExerciseIds}
       userId={user.id}
       totalDaysLogged={totalDaysLogged}
+      todayWellness={todayWellness ?? null}
     />
   );
 }
