@@ -37,11 +37,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
         <Sidebar />
-        <main className="main-content min-h-dvh relative z-[1]">
-          <div className="max-w-2xl mx-auto">
-            {children}
-          </div>
-        </main>
+        <div className="md:flex min-h-dvh">
+          <div className="hidden md:block flex-shrink-0" style={{ width: 260 }} />
+          <main className="flex-1 min-w-0 relative z-[1]">
+            <div className="max-w-2xl mx-auto">
+              {children}
+            </div>
+          </main>
+        </div>
       </body>
     </html>
   );
