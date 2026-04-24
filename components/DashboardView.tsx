@@ -280,7 +280,10 @@ type PlanDayItem = {
 type WellnessLog = {
   id: string;
   sleep_hours: number | null;
-  food_note: string | null;
+  food_breakfast: string | null;
+  food_lunch: string | null;
+  food_dinner: string | null;
+  food_pre_climb: string | null;
   climb_strength: number | null;
 };
 
@@ -358,25 +361,53 @@ function FatigueModal({ sessionId, onDone }: { sessionId: string; onDone: () => 
   );
 }
 
+function QuickMealInput({ label, value, onChange, placeholder }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder: string;
+}) {
+  return (
+    <div>
+      <label style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(167,139,248,0.5)', display: 'block', marginBottom: 4 }}>{label}</label>
+      <input
+        type="text"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{
+          width: '100%', padding: '8px 12px',
+          borderRadius: 12, fontSize: 12, color: '#ffffff',
+          background: 'rgba(124,90,246,0.07)',
+          border: '1px solid rgba(124,90,246,0.14)',
+          outline: 'none', transition: 'border-color 150ms ease',
+        }}
+        onFocus={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.5)')}
+        onBlur={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.14)')}
+      />
+    </div>
+  );
+}
+
 function WellnessQuickLog({ userId, existing }: { userId?: string; existing: WellnessLog | null }) {
   const supabase = createClient();
   const [sleepHours, setSleepHours] = useState(existing?.sleep_hours?.toString() ?? '');
-  const [foodNote, setFoodNote] = useState(existing?.food_note ?? '');
+  const [breakfast, setBreakfast] = useState(existing?.food_breakfast ?? '');
+  const [lunch, setLunch] = useState(existing?.food_lunch ?? '');
+  const [dinner, setDinner] = useState(existing?.food_dinner ?? '');
+  const [preClimb, setPreClimb] = useState(existing?.food_pre_climb ?? '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   const today = useRef('');
   useEffect(() => {
     const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    today.current = `${y}-${m}-${dd}`;
+    today.current = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }, []);
 
   const hasDirty =
     sleepHours !== (existing?.sleep_hours?.toString() ?? '') ||
-    foodNote !== (existing?.food_note ?? '');
+    breakfast !== (existing?.food_breakfast ?? '') ||
+    lunch !== (existing?.food_lunch ?? '') ||
+    dinner !== (existing?.food_dinner ?? '') ||
+    preClimb !== (existing?.food_pre_climb ?? '');
 
   async function save() {
     if (!userId || !today.current) return;
@@ -385,7 +416,10 @@ function WellnessQuickLog({ userId, existing }: { userId?: string; existing: Wel
       user_id: userId,
       date: today.current,
       sleep_hours: sleepHours ? parseFloat(sleepHours) : null,
-      food_note: foodNote.trim() || null,
+      food_breakfast: breakfast.trim() || null,
+      food_lunch: lunch.trim() || null,
+      food_dinner: dinner.trim() || null,
+      food_pre_climb: preClimb.trim() || null,
     }, { onConflict: 'user_id,date' });
     setSaving(false);
     setSaved(true);
@@ -412,16 +446,13 @@ function WellnessQuickLog({ userId, existing }: { userId?: string; existing: Wel
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {saved && (
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#a78bf8' }}>Saved ✓</span>
-          )}
+          {saved && <span style={{ fontSize: 12, fontWeight: 600, color: '#a78bf8' }}>Saved ✓</span>}
           <Link
             href="/daily-log"
             style={{
               padding: '6px 12px', borderRadius: 99, fontSize: 11, fontWeight: 700,
               background: 'rgba(124,90,246,0.1)', border: '1px solid rgba(124,90,246,0.22)',
-              color: '#a78bf8', textDecoration: 'none',
-              transition: 'background 150ms ease',
+              color: '#a78bf8', textDecoration: 'none', transition: 'background 150ms ease',
             }}
             onMouseEnter={e => (e.currentTarget.style.background = 'rgba(124,90,246,0.2)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'rgba(124,90,246,0.1)')}
@@ -432,54 +463,36 @@ function WellnessQuickLog({ userId, existing }: { userId?: string; existing: Wel
       </div>
 
       <div style={{ padding: '16px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ display: 'flex', gap: 10 }}>
-          {/* Sleep */}
-          <div style={{ flex: '0 0 auto' }}>
-            <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(167,139,248,0.55)', display: 'block', marginBottom: 6 }}>Sleep</label>
+        {/* Sleep row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div>
+            <label style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(167,139,248,0.5)', display: 'block', marginBottom: 4 }}>Sleep</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <input
-                type="number"
-                inputMode="decimal"
-                min="0" max="24" step="0.5"
-                value={sleepHours}
-                onChange={e => setSleepHours(e.target.value)}
-                placeholder="—"
+                type="number" inputMode="decimal" min="0" max="24" step="0.5"
+                value={sleepHours} onChange={e => setSleepHours(e.target.value)} placeholder="—"
                 style={{
-                  width: 68, padding: '10px 12px',
-                  borderRadius: 14, fontSize: 22, fontWeight: 800,
-                  letterSpacing: '-0.03em', textAlign: 'center',
-                  color: '#ffffff',
-                  background: 'rgba(124,90,246,0.07)',
-                  border: '1px solid rgba(124,90,246,0.16)',
-                  outline: 'none', transition: 'border-color 150ms ease',
+                  width: 62, padding: '8px 10px', borderRadius: 12,
+                  fontSize: 20, fontWeight: 800, letterSpacing: '-0.03em', textAlign: 'center',
+                  color: '#ffffff', background: 'rgba(124,90,246,0.07)',
+                  border: '1px solid rgba(124,90,246,0.14)', outline: 'none', transition: 'border-color 150ms ease',
                 }}
                 onFocus={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.5)')}
-                onBlur={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.16)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.14)')}
               />
-              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)', fontWeight: 600 }}>hrs</span>
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.22)', fontWeight: 600 }}>hrs</span>
             </div>
           </div>
-
-          {/* Food */}
           <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(167,139,248,0.55)', display: 'block', marginBottom: 6 }}>Food</label>
-            <textarea
-              value={foodNote}
-              onChange={e => setFoodNote(e.target.value)}
-              placeholder="What did you eat today?"
-              rows={2}
-              style={{
-                width: '100%', padding: '10px 14px',
-                borderRadius: 14, fontSize: 13, color: '#ffffff',
-                lineHeight: 1.55, resize: 'none',
-                background: 'rgba(124,90,246,0.07)',
-                border: '1px solid rgba(124,90,246,0.16)',
-                outline: 'none', transition: 'border-color 150ms ease',
-              }}
-              onFocus={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.5)')}
-              onBlur={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.16)')}
-            />
+            <QuickMealInput label="Pre-climb (within 1hr)" value={preClimb} onChange={setPreClimb} placeholder="banana, energy bar…" />
           </div>
+        </div>
+
+        {/* Meals grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <QuickMealInput label="Breakfast" value={breakfast} onChange={setBreakfast} placeholder="oats, eggs…" />
+          <QuickMealInput label="Lunch" value={lunch} onChange={setLunch} placeholder="chicken, rice…" />
+          <QuickMealInput label="Dinner" value={dinner} onChange={setDinner} placeholder="pasta, fish…" />
         </div>
 
         <button
@@ -489,8 +502,7 @@ function WellnessQuickLog({ userId, existing }: { userId?: string; existing: Wel
             padding: '12px', borderRadius: 99, fontSize: 13, fontWeight: 700,
             color: '#ffffff', border: 'none', cursor: 'pointer',
             background: 'linear-gradient(135deg, #7c5af6 0%, #6646e0 100%)',
-            opacity: saving || !hasDirty ? 0.4 : 1,
-            transition: 'opacity 150ms ease',
+            opacity: saving || !hasDirty ? 0.4 : 1, transition: 'opacity 150ms ease',
           }}
           onMouseEnter={e => { if (!saving && hasDirty) (e.currentTarget as HTMLElement).style.opacity = '0.85'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = saving || !hasDirty ? '0.4' : '1'; }}

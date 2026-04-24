@@ -53,7 +53,7 @@ export default async function DashboardPage() {
       .eq('user_id', user.id),
     supabase
       .from('wellness_logs')
-      .select('id, sleep_hours, food_note, climb_strength')
+      .select('id, sleep_hours, food_breakfast, food_lunch, food_dinner, food_pre_climb, climb_strength')
       .eq('user_id', user.id)
       .eq('date', today)
       .single(),

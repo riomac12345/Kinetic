@@ -2,23 +2,22 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import Link from 'next/link';
 
 type WellnessLog = {
   id: string;
   date: string;
   sleep_hours: number | null;
-  food_note: string | null;
+  food_breakfast: string | null;
+  food_lunch: string | null;
+  food_dinner: string | null;
+  food_pre_climb: string | null;
   climb_strength: number | null;
 };
 
 type Props = { userId: string; logs: WellnessLog[] };
 
 function localDate(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dd}`;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
 function fmtLong(dateStr: string) {
@@ -54,7 +53,16 @@ function sleepQuality(h: number) {
   return { text: 'Low', color: '#f87171' };
 }
 
-const CARD_STYLE: React.CSSProperties = {
+function mealSummary(log: WellnessLog) {
+  return [
+    log.food_breakfast && `B: ${log.food_breakfast}`,
+    log.food_lunch && `L: ${log.food_lunch}`,
+    log.food_dinner && `D: ${log.food_dinner}`,
+    log.food_pre_climb && `⚡ ${log.food_pre_climb}`,
+  ].filter(Boolean).join('  ·  ');
+}
+
+const CARD: React.CSSProperties = {
   borderRadius: 24,
   background: 'linear-gradient(160deg, rgba(20,16,50,0.9) 0%, rgba(14,11,36,0.95) 100%)',
   border: '1px solid rgba(124,90,246,0.15)',
@@ -62,27 +70,46 @@ const CARD_STYLE: React.CSSProperties = {
   overflow: 'hidden',
 };
 
-const CARD_HEADER_STYLE: React.CSSProperties = {
+const CARD_HDR: React.CSSProperties = {
   padding: '16px 20px',
   borderBottom: '1px solid rgba(124,90,246,0.08)',
   background: 'linear-gradient(180deg, rgba(124,90,246,0.06) 0%, transparent 100%)',
 };
 
-const LABEL_STYLE: React.CSSProperties = {
+const LBL: React.CSSProperties = {
   fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
   textTransform: 'uppercase', color: 'rgba(167,139,248,0.55)',
   display: 'block', marginBottom: 10,
 };
 
-const INPUT_STYLE: React.CSSProperties = {
+const INPUT: React.CSSProperties = {
   background: 'rgba(124,90,246,0.07)',
   border: '1px solid rgba(124,90,246,0.16)',
-  outline: 'none',
-  transition: 'border-color 150ms ease',
-  color: '#ffffff',
+  outline: 'none', transition: 'border-color 150ms ease', color: '#ffffff',
 };
 
-// ── Insights ────────────────────────────────────────────────────────────────
+function focus(e: React.FocusEvent<HTMLElement>) { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(124,90,246,0.5)'; }
+function blur(e: React.FocusEvent<HTMLElement>)  { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(124,90,246,0.16)'; }
+
+function MealField({ label, value, onChange, placeholder, rows = 2 }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder: string; rows?: number;
+}) {
+  return (
+    <div>
+      <label style={LBL}>{label}</label>
+      <textarea
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={rows}
+        style={{ ...INPUT, width: '100%', padding: '12px 16px', borderRadius: 16, fontSize: 14, lineHeight: 1.6, resize: 'none' }}
+        onFocus={focus} onBlur={blur}
+      />
+    </div>
+  );
+}
+
+// ── Insights ─────────────────────────────────────────────────────────────────
 
 function InsightsSection({ logs }: { logs: WellnessLog[] }) {
   const logsWithSleep = logs.filter(l => l.sleep_hours != null);
@@ -118,7 +145,7 @@ function InsightsSection({ logs }: { logs: WellnessLog[] }) {
         </div>
         <p style={{ fontSize: 15, fontWeight: 700, color: '#ffffff', marginBottom: 6, letterSpacing: '-0.02em' }}>No data yet</p>
         <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', lineHeight: 1.65 }}>
-          Start logging sleep, food, and climbing strength above.<br />Patterns will appear here once you have a few entries.
+          Log sleep, meals, and climbing strength above.<br />Patterns will appear once you have a few entries.
         </p>
       </div>
     );
@@ -126,12 +153,10 @@ function InsightsSection({ logs }: { logs: WellnessLog[] }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        {/* Avg sleep */}
-        <div style={{ ...CARD_STYLE, padding: 18 }}>
-          <p style={{ ...LABEL_STYLE, marginBottom: 8 }}>Avg sleep</p>
+        <div style={{ ...CARD, padding: 18 }}>
+          <p style={{ ...LBL, marginBottom: 8 }}>Avg sleep</p>
           <p style={{ fontSize: 32, fontWeight: 800, color: '#ffffff', letterSpacing: '-0.04em', lineHeight: 1 }}>
             {avgSleep != null ? avgSleep.toFixed(1) : '—'}
             <span style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.3)', marginLeft: 3 }}>hrs</span>
@@ -140,10 +165,8 @@ function InsightsSection({ logs }: { logs: WellnessLog[] }) {
             {logsWithSleep.length} day{logsWithSleep.length !== 1 ? 's' : ''} tracked
           </p>
         </div>
-
-        {/* Climb avg */}
-        <div style={{ ...CARD_STYLE, padding: 18 }}>
-          <p style={{ ...LABEL_STYLE, marginBottom: 8 }}>Avg strength</p>
+        <div style={{ ...CARD, padding: 18 }}>
+          <p style={{ ...LBL, marginBottom: 8 }}>Avg strength</p>
           <p style={{ fontSize: 32, fontWeight: 800, color: '#ffffff', letterSpacing: '-0.04em', lineHeight: 1 }}>
             {avgClimb != null ? avgClimb.toFixed(1) : '—'}
             <span style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.3)', marginLeft: 3 }}>/10</span>
@@ -160,20 +183,14 @@ function InsightsSection({ logs }: { logs: WellnessLog[] }) {
           padding: '16px 18px', borderRadius: 20,
           background: 'rgba(124,90,246,0.07)', border: '1px solid rgba(124,90,246,0.18)',
         }}>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(167,139,248,0.55)', marginBottom: 8 }}>
-            Pattern
-          </p>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(167,139,248,0.55)', marginBottom: 8 }}>Pattern</p>
           <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 1.65 }}>
             {Math.abs(avgSleepBest - avgSleep) >= 0.5 ? (
-              avgSleepBest > avgSleep ? (
-                <>On your <span style={{ color: '#a78bf8', fontWeight: 700 }}>strongest climbing days</span> you slept{' '}
-                  <span style={{ color: '#ffffff', fontWeight: 700 }}>{avgSleepBest.toFixed(1)} hrs</span>{' '}
-                  — {(avgSleepBest - avgSleep).toFixed(1)} hrs more than your average.</>
-              ) : (
-                <>Your strongest sessions actually happen with slightly less sleep ({avgSleepBest.toFixed(1)} hrs vs {avgSleep.toFixed(1)} avg). Keep tracking to find more patterns.</>
-              )
+              avgSleepBest > avgSleep
+                ? <>On your <span style={{ color: '#a78bf8', fontWeight: 700 }}>strongest days</span> you slept <span style={{ color: '#ffffff', fontWeight: 700 }}>{avgSleepBest.toFixed(1)} hrs</span> — {(avgSleepBest - avgSleep).toFixed(1)} hrs more than your average.</>
+                : <>Your strongest sessions happen even with slightly less sleep ({avgSleepBest.toFixed(1)} hrs vs {avgSleep.toFixed(1)} avg). Keep tracking to find more patterns.</>
             ) : (
-              <>Sleep doesn&apos;t clearly separate your best days yet — your top sessions average {avgSleepBest.toFixed(1)} hrs vs {avgSleep.toFixed(1)} overall. Keep logging.</>
+              <>Sleep doesn&apos;t clearly separate your best days yet ({avgSleepBest.toFixed(1)} hrs on best days vs {avgSleep.toFixed(1)} avg). Keep logging.</>
             )}
           </p>
         </div>
@@ -181,23 +198,28 @@ function InsightsSection({ logs }: { logs: WellnessLog[] }) {
 
       {/* Best climbing days */}
       {bestDays.length > 0 && (
-        <div style={CARD_STYLE}>
-          <div style={CARD_HEADER_STYLE}>
-            <p style={{ ...LABEL_STYLE, marginBottom: 3 }}>Strongest days</p>
-            <p style={{ fontSize: 15, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em' }}>
-              Your best climbing sessions
-            </p>
+        <div style={CARD}>
+          <div style={CARD_HDR}>
+            <p style={{ ...LBL, marginBottom: 3 }}>Strongest days</p>
+            <p style={{ fontSize: 15, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em' }}>Your best climbing sessions</p>
           </div>
           <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {bestDays.map((log, i) => {
               const c = strengthColor(log.climb_strength!);
+              const meals = [
+                log.food_breakfast && { icon: '🌅', label: 'Breakfast', val: log.food_breakfast },
+                log.food_lunch     && { icon: '☀️', label: 'Lunch',     val: log.food_lunch },
+                log.food_dinner    && { icon: '🌙', label: 'Dinner',    val: log.food_dinner },
+                log.food_pre_climb && { icon: '⚡', label: 'Pre-climb', val: log.food_pre_climb },
+              ].filter(Boolean) as { icon: string; label: string; val: string }[];
+
               return (
                 <div key={log.id} style={{
                   padding: '14px 16px', borderRadius: 16,
                   background: i === 0 ? 'rgba(124,90,246,0.09)' : 'rgba(255,255,255,0.025)',
                   border: i === 0 ? '1px solid rgba(124,90,246,0.2)' : '1px solid rgba(124,90,246,0.07)',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.65)' }}>{fmtShort(log.date)}</p>
                     <span style={{
                       padding: '3px 10px', borderRadius: 99, fontSize: 13, fontWeight: 800,
@@ -215,17 +237,14 @@ function InsightsSection({ logs }: { logs: WellnessLog[] }) {
                         <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>{log.sleep_hours} hrs sleep</p>
                       </div>
                     )}
-                    {log.food_note && (
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7 }}>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(167,139,248,0.45)" strokeWidth="2" strokeLinecap="round" style={{ marginTop: 1, flexShrink: 0 }}>
-                          <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
-                          <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
-                        </svg>
-                        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 1.55 }}>
-                          {log.food_note.length > 110 ? log.food_note.slice(0, 110) + '…' : log.food_note}
+                    {meals.map(m => (
+                      <div key={m.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 7 }}>
+                        <span style={{ fontSize: 11, flexShrink: 0 }}>{m.icon}</span>
+                        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>
+                          <span style={{ color: 'rgba(167,139,248,0.5)', fontWeight: 600 }}>{m.label}:</span>{' '}{m.val}
                         </p>
                       </div>
-                    )}
+                    ))}
                   </div>
                 </div>
               );
@@ -240,16 +259,14 @@ function InsightsSection({ logs }: { logs: WellnessLog[] }) {
           background: 'rgba(124,90,246,0.04)', border: '1px solid rgba(124,90,246,0.1)',
         }}>
           <p style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 6 }}>No climbing sessions yet</p>
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>
-            Add a climbing strength rating when you log a session.
-          </p>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>Add a climbing strength rating on any session day.</p>
         </div>
       )}
     </div>
   );
 }
 
-// ── History ──────────────────────────────────────────────────────────────────
+// ── History ───────────────────────────────────────────────────────────────────
 
 function HistorySection({ logs }: { logs: WellnessLog[] }) {
   if (!logs.length) {
@@ -265,33 +282,30 @@ function HistorySection({ logs }: { logs: WellnessLog[] }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {logs.map(log => {
         const c = log.climb_strength ? strengthColor(log.climb_strength) : null;
+        const summary = mealSummary(log);
         return (
           <div key={log.id} style={{
             padding: '14px 16px', borderRadius: 18,
             background: 'rgba(255,255,255,0.025)',
             border: '1px solid rgba(124,90,246,0.08)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: log.food_note ? 6 : 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: summary ? 6 : 0 }}>
               <p style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.65)' }}>{fmtShort(log.date)}</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 {log.sleep_hours != null && (
-                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>
-                    {log.sleep_hours}h sleep
-                  </span>
+                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>{log.sleep_hours}h</span>
                 )}
                 {c && log.climb_strength && (
                   <span style={{
                     padding: '2px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700,
                     background: c.bg, border: `1px solid ${c.border}`, color: c.text,
-                  }}>
-                    {log.climb_strength}/10
-                  </span>
+                  }}>{log.climb_strength}/10</span>
                 )}
               </div>
             </div>
-            {log.food_note && (
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', lineHeight: 1.55, marginTop: 4 }}>
-                {log.food_note.length > 120 ? log.food_note.slice(0, 120) + '…' : log.food_note}
+            {summary && (
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', lineHeight: 1.55 }}>
+                {summary.length > 130 ? summary.slice(0, 130) + '…' : summary}
               </p>
             )}
           </div>
@@ -301,7 +315,7 @@ function HistorySection({ logs }: { logs: WellnessLog[] }) {
   );
 }
 
-// ── Main ─────────────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function DailyLogView({ userId, logs: initialLogs }: Props) {
   const supabase = createClient();
@@ -326,14 +340,20 @@ export default function DailyLogView({ userId, logs: initialLogs }: Props) {
 
   // Form state
   const [sleepHours, setSleepHours] = useState('');
-  const [foodNote, setFoodNote] = useState('');
+  const [breakfast, setBreakfast] = useState('');
+  const [lunch, setLunch] = useState('');
+  const [dinner, setDinner] = useState('');
+  const [preClimb, setPreClimb] = useState('');
   const [climbStrength, setClimbStrength] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     setSleepHours(selectedLog?.sleep_hours?.toString() ?? '');
-    setFoodNote(selectedLog?.food_note ?? '');
+    setBreakfast(selectedLog?.food_breakfast ?? '');
+    setLunch(selectedLog?.food_lunch ?? '');
+    setDinner(selectedLog?.food_dinner ?? '');
+    setPreClimb(selectedLog?.food_pre_climb ?? '');
     setClimbStrength(selectedLog?.climb_strength ?? null);
     setSaved(false);
   }, [selectedDate]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -360,7 +380,10 @@ export default function DailyLogView({ userId, logs: initialLogs }: Props) {
         user_id: userId,
         date: selectedDate,
         sleep_hours: sleepHours ? parseFloat(sleepHours) : null,
-        food_note: foodNote.trim() || null,
+        food_breakfast: breakfast.trim() || null,
+        food_lunch: lunch.trim() || null,
+        food_dinner: dinner.trim() || null,
+        food_pre_climb: preClimb.trim() || null,
         climb_strength: climbStrength,
       }, { onConflict: 'user_id,date' })
       .select()
@@ -371,11 +394,7 @@ export default function DailyLogView({ userId, logs: initialLogs }: Props) {
       setTimeout(() => setSaved(false), 2500);
       setLogs(prev => {
         const idx = prev.findIndex(l => l.date === selectedDate);
-        if (idx >= 0) {
-          const next = [...prev];
-          next[idx] = data as WellnessLog;
-          return next;
-        }
+        if (idx >= 0) { const next = [...prev]; next[idx] = data as WellnessLog; return next; }
         return [data as WellnessLog, ...prev].sort((a, b) => b.date.localeCompare(a.date));
       });
     }
@@ -383,12 +402,22 @@ export default function DailyLogView({ userId, logs: initialLogs }: Props) {
 
   const hasDirtyChanges =
     sleepHours !== (selectedLog?.sleep_hours?.toString() ?? '') ||
-    foodNote !== (selectedLog?.food_note ?? '') ||
+    breakfast  !== (selectedLog?.food_breakfast ?? '') ||
+    lunch      !== (selectedLog?.food_lunch ?? '') ||
+    dinner     !== (selectedLog?.food_dinner ?? '') ||
+    preClimb   !== (selectedLog?.food_pre_climb ?? '') ||
     climbStrength !== (selectedLog?.climb_strength ?? null);
 
   const [activeSection, setActiveSection] = useState<'insights' | 'history'>('insights');
 
   if (!selectedDate) return null;
+
+  const navBtn: React.CSSProperties = {
+    width: 36, height: 36, borderRadius: 12, flexShrink: 0,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: 'rgba(124,90,246,0.08)', border: '1px solid rgba(124,90,246,0.15)',
+    color: 'rgba(255,255,255,0.6)', cursor: 'pointer', transition: 'background 150ms ease',
+  };
 
   return (
     <div style={{ minHeight: '100dvh', padding: '0 20px 48px' }}>
@@ -399,15 +428,7 @@ export default function DailyLogView({ userId, logs: initialLogs }: Props) {
           Daily Log
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            onClick={prevDay}
-            style={{
-              width: 36, height: 36, borderRadius: 12, flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(124,90,246,0.08)', border: '1px solid rgba(124,90,246,0.15)',
-              color: 'rgba(255,255,255,0.6)', cursor: 'pointer',
-              transition: 'background 150ms ease',
-            }}
+          <button onClick={prevDay} style={navBtn}
             onMouseEnter={e => (e.currentTarget.style.background = 'rgba(124,90,246,0.16)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'rgba(124,90,246,0.08)')}
           >
@@ -419,15 +440,12 @@ export default function DailyLogView({ userId, logs: initialLogs }: Props) {
               {fmtLong(selectedDate)}
             </h1>
             {!isToday && (
-              <button
-                onClick={() => setSelectedDate(today)}
-                style={{
-                  marginTop: 6, padding: '3px 12px', borderRadius: 99,
-                  fontSize: 11, fontWeight: 600,
-                  background: 'rgba(124,90,246,0.1)', border: '1px solid rgba(124,90,246,0.22)',
-                  color: '#a78bf8', cursor: 'pointer',
-                }}
-              >
+              <button onClick={() => setSelectedDate(today)} style={{
+                marginTop: 6, padding: '3px 12px', borderRadius: 99,
+                fontSize: 11, fontWeight: 600,
+                background: 'rgba(124,90,246,0.1)', border: '1px solid rgba(124,90,246,0.22)',
+                color: '#a78bf8', cursor: 'pointer',
+              }}>
                 Back to today
               </button>
             )}
@@ -436,14 +454,7 @@ export default function DailyLogView({ userId, logs: initialLogs }: Props) {
           <button
             onClick={nextDay}
             disabled={isToday}
-            style={{
-              width: 36, height: 36, borderRadius: 12, flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(124,90,246,0.08)', border: '1px solid rgba(124,90,246,0.15)',
-              color: 'rgba(255,255,255,0.6)', cursor: isToday ? 'default' : 'pointer',
-              opacity: isToday ? 0.25 : 1,
-              transition: 'background 150ms ease',
-            }}
+            style={{ ...navBtn, cursor: isToday ? 'default' : 'pointer', opacity: isToday ? 0.25 : 1 }}
             onMouseEnter={e => { if (!isToday) (e.currentTarget.style.background = 'rgba(124,90,246,0.16)'); }}
             onMouseLeave={e => (e.currentTarget.style.background = 'rgba(124,90,246,0.08)')}
           >
@@ -453,10 +464,10 @@ export default function DailyLogView({ userId, logs: initialLogs }: Props) {
       </div>
 
       {/* Log card */}
-      <div className="anim-fade-up-1" style={{ ...CARD_STYLE, marginBottom: 16 }}>
-        <div style={{ ...CARD_HEADER_STYLE, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="anim-fade-up-1" style={{ ...CARD, marginBottom: 16 }}>
+        <div style={{ ...CARD_HDR, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <p style={{ ...LABEL_STYLE, marginBottom: 3 }}>{isToday ? "Today's entry" : 'Past entry'}</p>
+            <p style={{ ...LBL, marginBottom: 3 }}>{isToday ? "Today's entry" : 'Past entry'}</p>
             <p style={{ fontSize: 15, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em' }}>
               {selectedLog ? 'Edit entry' : 'New entry'}
             </p>
@@ -473,23 +484,13 @@ export default function DailyLogView({ userId, logs: initialLogs }: Props) {
 
           {/* Sleep */}
           <div>
-            <label style={LABEL_STYLE}>Sleep</label>
+            <label style={LBL}>Sleep</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <input
-                type="number"
-                inputMode="decimal"
-                min="0" max="24" step="0.5"
-                value={sleepHours}
-                onChange={e => setSleepHours(e.target.value)}
-                placeholder="0"
-                style={{
-                  ...INPUT_STYLE,
-                  width: 84, padding: '12px 14px',
-                  borderRadius: 16, fontSize: 30, fontWeight: 800,
-                  letterSpacing: '-0.04em', textAlign: 'center',
-                }}
-                onFocus={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.5)')}
-                onBlur={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.16)')}
+                type="number" inputMode="decimal" min="0" max="24" step="0.5"
+                value={sleepHours} onChange={e => setSleepHours(e.target.value)} placeholder="0"
+                style={{ ...INPUT, width: 84, padding: '12px 14px', borderRadius: 16, fontSize: 30, fontWeight: 800, letterSpacing: '-0.04em', textAlign: 'center' }}
+                onFocus={focus} onBlur={blur}
               />
               <div>
                 <p style={{ fontSize: 20, fontWeight: 700, color: 'rgba(255,255,255,0.2)', letterSpacing: '-0.02em' }}>hrs</p>
@@ -501,43 +502,48 @@ export default function DailyLogView({ userId, logs: initialLogs }: Props) {
             </div>
           </div>
 
-          {/* Food */}
+          {/* Meals section */}
           <div>
-            <label style={LABEL_STYLE}>Food today</label>
-            <textarea
-              value={foodNote}
-              onChange={e => setFoodNote(e.target.value)}
-              placeholder="e.g. oats + eggs, chicken + rice, banana pre-session…"
-              rows={3}
-              style={{
-                ...INPUT_STYLE,
-                width: '100%', padding: '12px 16px',
-                borderRadius: 16, fontSize: 14, lineHeight: 1.6, resize: 'none',
-              }}
-              onFocus={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.5)')}
-              onBlur={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.16)')}
-            />
+            <p style={{ ...LBL, marginBottom: 14 }}>Meals</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <MealField label="Breakfast" value={breakfast} onChange={setBreakfast} placeholder="e.g. oats, eggs, fruit…" />
+              <MealField label="Lunch" value={lunch} onChange={setLunch} placeholder="e.g. chicken + rice, salad…" />
+              <MealField label="Dinner" value={dinner} onChange={setDinner} placeholder="e.g. pasta, salmon, veg…" />
+              <div>
+                <label style={{ ...LBL, color: 'rgba(251,146,60,0.7)' }}>⚡ Pre-climb (within 1 hr)</label>
+                <textarea
+                  value={preClimb}
+                  onChange={e => setPreClimb(e.target.value)}
+                  placeholder="e.g. banana, energy bar, espresso…"
+                  rows={2}
+                  style={{
+                    ...INPUT, width: '100%', padding: '12px 16px',
+                    borderRadius: 16, fontSize: 14, lineHeight: 1.6, resize: 'none',
+                    border: '1px solid rgba(251,146,60,0.2)',
+                  }}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'rgba(251,146,60,0.5)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'rgba(251,146,60,0.2)')}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Climb strength */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <label style={{ ...LABEL_STYLE, marginBottom: 0 }}>Climbing strength</label>
+              <label style={{ ...LBL, marginBottom: 0 }}>Climbing strength</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 {climbStrength != null && (
                   <>
                     <span style={{ fontSize: 12, fontWeight: 600, color: strengthColor(climbStrength).text }}>
                       {strengthLabel(climbStrength)}
                     </span>
-                    <button
-                      onClick={() => setClimbStrength(null)}
-                      style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                    >clear</button>
+                    <button onClick={() => setClimbStrength(null)} style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                      clear
+                    </button>
                   </>
                 )}
-                {climbStrength == null && (
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.22)' }}>optional</span>
-                )}
+                {climbStrength == null && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.22)' }}>optional</span>}
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 5 }}>
@@ -545,17 +551,13 @@ export default function DailyLogView({ userId, logs: initialLogs }: Props) {
                 const c = strengthColor(n);
                 const sel = climbStrength === n;
                 return (
-                  <button
-                    key={n}
-                    onClick={() => setClimbStrength(climbStrength === n ? null : n)}
-                    style={{
-                      padding: '10px 0', borderRadius: 10, fontSize: 14, fontWeight: 700,
-                      background: sel ? c.bg : 'rgba(255,255,255,0.03)',
-                      border: sel ? `1px solid ${c.border}` : '1px solid rgba(255,255,255,0.06)',
-                      color: sel ? c.text : 'rgba(255,255,255,0.22)',
-                      cursor: 'pointer', transition: 'all 150ms ease',
-                      touchAction: 'manipulation',
-                    }}
+                  <button key={n} onClick={() => setClimbStrength(climbStrength === n ? null : n)} style={{
+                    padding: '10px 0', borderRadius: 10, fontSize: 14, fontWeight: 700,
+                    background: sel ? c.bg : 'rgba(255,255,255,0.03)',
+                    border: sel ? `1px solid ${c.border}` : '1px solid rgba(255,255,255,0.06)',
+                    color: sel ? c.text : 'rgba(255,255,255,0.22)',
+                    cursor: 'pointer', transition: 'all 150ms ease', touchAction: 'manipulation',
+                  }}
                     onMouseEnter={e => { if (!sel) { (e.currentTarget as HTMLElement).style.background = c.bg; (e.currentTarget as HTMLElement).style.color = c.text; } }}
                     onMouseLeave={e => { if (!sel) { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.22)'; } }}
                   >
@@ -566,7 +568,6 @@ export default function DailyLogView({ userId, logs: initialLogs }: Props) {
             </div>
           </div>
 
-          {/* Save */}
           <button
             onClick={save}
             disabled={saving || !hasDirtyChanges}
@@ -574,8 +575,7 @@ export default function DailyLogView({ userId, logs: initialLogs }: Props) {
               padding: '15px', borderRadius: 99, fontSize: 14, fontWeight: 700,
               color: '#ffffff', border: 'none', cursor: 'pointer',
               background: 'linear-gradient(135deg, #7c5af6 0%, #6646e0 100%)',
-              opacity: saving || !hasDirtyChanges ? 0.4 : 1,
-              transition: 'opacity 150ms ease',
+              opacity: saving || !hasDirtyChanges ? 0.4 : 1, transition: 'opacity 150ms ease',
             }}
             onMouseEnter={e => { if (!saving && hasDirtyChanges) (e.currentTarget as HTMLElement).style.opacity = '0.85'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = saving || !hasDirtyChanges ? '0.4' : '1'; }}
@@ -585,30 +585,24 @@ export default function DailyLogView({ userId, logs: initialLogs }: Props) {
         </div>
       </div>
 
-      {/* Section tabs */}
+      {/* Tabs */}
       <div className="anim-fade-up-2" style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
         {(['insights', 'history'] as const).map(s => (
-          <button
-            key={s}
-            onClick={() => setActiveSection(s)}
-            style={{
-              flex: 1, padding: '10px', borderRadius: 14,
-              fontSize: 12, fontWeight: 700, letterSpacing: '0.02em',
-              background: activeSection === s ? 'rgba(124,90,246,0.15)' : 'rgba(124,90,246,0.05)',
-              border: activeSection === s ? '1px solid rgba(124,90,246,0.35)' : '1px solid rgba(124,90,246,0.1)',
-              color: activeSection === s ? '#a78bf8' : 'rgba(255,255,255,0.38)',
-              cursor: 'pointer', transition: 'all 150ms ease',
-            }}
-          >
+          <button key={s} onClick={() => setActiveSection(s)} style={{
+            flex: 1, padding: '10px', borderRadius: 14,
+            fontSize: 12, fontWeight: 700, letterSpacing: '0.02em',
+            background: activeSection === s ? 'rgba(124,90,246,0.15)' : 'rgba(124,90,246,0.05)',
+            border: activeSection === s ? '1px solid rgba(124,90,246,0.35)' : '1px solid rgba(124,90,246,0.1)',
+            color: activeSection === s ? '#a78bf8' : 'rgba(255,255,255,0.38)',
+            cursor: 'pointer', transition: 'all 150ms ease',
+          }}>
             {s === 'insights' ? 'Insights' : 'History'}
           </button>
         ))}
       </div>
 
       <div className="anim-fade-up-3">
-        {activeSection === 'insights'
-          ? <InsightsSection logs={logs} />
-          : <HistorySection logs={logs} />}
+        {activeSection === 'insights' ? <InsightsSection logs={logs} /> : <HistorySection logs={logs} />}
       </div>
     </div>
   );
