@@ -36,9 +36,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             animation: 'orb-drift 8s ease-in-out infinite',
           }}
         />
-        <Sidebar />
         <div className="md:flex min-h-dvh">
-          <div className="hidden md:block flex-shrink-0" style={{ width: 260 }} />
+          <Sidebar />
           <main className="flex-1 min-w-0 relative z-[1]">
             <div className="max-w-2xl mx-auto">
               {children}
