@@ -268,7 +268,15 @@ function InsightsSection({ logs }: { logs: WellnessLog[] }) {
 
 // ── History ───────────────────────────────────────────────────────────────────
 
-function HistorySection({ logs }: { logs: WellnessLog[] }) {
+function HistorySection({ logs, onDelete }: { logs: WellnessLog[]; onDelete: (id: string, date: string) => void }) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDelete(log: WellnessLog) {
+    setDeletingId(log.id);
+    await onDelete(log.id, log.date);
+    setDeletingId(null);
+  }
+
   if (!logs.length) {
     return (
       <div style={{ textAlign: 'center', padding: '56px 24px' }}>
@@ -283,11 +291,14 @@ function HistorySection({ logs }: { logs: WellnessLog[] }) {
       {logs.map(log => {
         const c = log.climb_strength ? strengthColor(log.climb_strength) : null;
         const summary = mealSummary(log);
+        const isDeleting = deletingId === log.id;
         return (
           <div key={log.id} style={{
             padding: '14px 16px', borderRadius: 18,
             background: 'rgba(255,255,255,0.025)',
             border: '1px solid rgba(124,90,246,0.08)',
+            opacity: isDeleting ? 0.4 : 1,
+            transition: 'opacity 150ms ease',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: summary ? 6 : 0 }}>
               <p style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.65)' }}>{fmtShort(log.date)}</p>
@@ -301,6 +312,23 @@ function HistorySection({ logs }: { logs: WellnessLog[] }) {
                     background: c.bg, border: `1px solid ${c.border}`, color: c.text,
                   }}>{log.climb_strength}/10</span>
                 )}
+                <button
+                  onClick={() => handleDelete(log)}
+                  disabled={!!deletingId}
+                  style={{
+                    width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'transparent', border: '1px solid rgba(239,68,68,0.12)',
+                    color: 'rgba(239,68,68,0.4)', cursor: 'pointer',
+                    transition: 'all 150ms ease',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.08)'; (e.currentTarget as HTMLElement).style.color = '#f87171'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.3)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'rgba(239,68,68,0.4)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.12)'; }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
+                  </svg>
+                </button>
               </div>
             </div>
             {summary && (
@@ -347,6 +375,7 @@ export default function DailyLogView({ userId, logs: initialLogs }: Props) {
   const [climbStrength, setClimbStrength] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     setSleepHours(selectedLog?.sleep_hours?.toString() ?? '');
@@ -398,6 +427,17 @@ export default function DailyLogView({ userId, logs: initialLogs }: Props) {
         return [data as WellnessLog, ...prev].sort((a, b) => b.date.localeCompare(a.date));
       });
     }
+  }
+
+  async function deleteEntry(logId: string, logDate: string) {
+    setDeleting(true);
+    await supabase.from('wellness_logs').delete().eq('id', logId);
+    setLogs(prev => prev.filter(l => l.date !== logDate));
+    if (logDate === selectedDate) {
+      setSleepHours(''); setBreakfast(''); setLunch('');
+      setDinner(''); setPreClimb(''); setClimbStrength(null);
+    }
+    setDeleting(false);
   }
 
   const hasDirtyChanges =
@@ -570,18 +610,36 @@ export default function DailyLogView({ userId, logs: initialLogs }: Props) {
 
           <button
             onClick={save}
-            disabled={saving || !hasDirtyChanges}
+            disabled={saving || deleting || !hasDirtyChanges}
             style={{
               padding: '15px', borderRadius: 99, fontSize: 14, fontWeight: 700,
               color: '#ffffff', border: 'none', cursor: 'pointer',
               background: 'linear-gradient(135deg, #7c5af6 0%, #6646e0 100%)',
-              opacity: saving || !hasDirtyChanges ? 0.4 : 1, transition: 'opacity 150ms ease',
+              opacity: saving || deleting || !hasDirtyChanges ? 0.4 : 1, transition: 'opacity 150ms ease',
             }}
-            onMouseEnter={e => { if (!saving && hasDirtyChanges) (e.currentTarget as HTMLElement).style.opacity = '0.85'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = saving || !hasDirtyChanges ? '0.4' : '1'; }}
+            onMouseEnter={e => { if (!saving && !deleting && hasDirtyChanges) (e.currentTarget as HTMLElement).style.opacity = '0.85'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = saving || deleting || !hasDirtyChanges ? '0.4' : '1'; }}
           >
             {saving ? 'Saving…' : selectedLog ? 'Update' : 'Save'}
           </button>
+
+          {selectedLog && (
+            <button
+              onClick={() => deleteEntry(selectedLog.id, selectedLog.date)}
+              disabled={deleting || saving}
+              style={{
+                padding: '10px', borderRadius: 99, fontSize: 12, fontWeight: 600,
+                color: deleting ? 'rgba(255,255,255,0.2)' : 'rgba(239,68,68,0.55)',
+                background: 'transparent',
+                border: '1px solid rgba(239,68,68,0.15)',
+                cursor: 'pointer', transition: 'all 150ms ease',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#f87171'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.35)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(239,68,68,0.55)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.15)'; }}
+            >
+              {deleting ? 'Deleting…' : 'Delete this entry'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -602,7 +660,7 @@ export default function DailyLogView({ userId, logs: initialLogs }: Props) {
       </div>
 
       <div className="anim-fade-up-3">
-        {activeSection === 'insights' ? <InsightsSection logs={logs} /> : <HistorySection logs={logs} />}
+        {activeSection === 'insights' ? <InsightsSection logs={logs} /> : <HistorySection logs={logs} onDelete={deleteEntry} />}
       </div>
     </div>
   );
