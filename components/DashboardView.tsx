@@ -619,11 +619,12 @@ const MEAL_SLOTS = [
   { key: 'pre_climb_nutrition' as const, foodKey: 'food_pre_climb' as const, label: 'Pre-climb' },
 ];
 
-function QuickPhotoLog({ userId, todayWellness, onLogged, compact = false }: {
+function QuickPhotoLog({ userId, todayWellness, onLogged, compact = false, iconOnly = false }: {
   userId?: string;
   todayWellness: WellnessLog | null;
   onLogged: (slot: string, nutrition: NutritionData) => void;
   compact?: boolean;
+  iconOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<typeof MEAL_SLOTS[number] | null>(null);
@@ -698,7 +699,13 @@ function QuickPhotoLog({ userId, todayWellness, onLogged, compact = false }: {
       <button
         onClick={() => { setOpen(true); reset(); }}
         title="Log a meal with photo"
-        style={compact ? {
+        style={iconOnly ? {
+          width: 38, height: 38, borderRadius: '50%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(240,112,48,0.12)',
+          border: '1px solid rgba(240,112,48,0.3)', color: '#F07030', cursor: 'pointer',
+          flexShrink: 0, transition: 'all 140ms ease',
+        } : compact ? {
           display: 'flex', alignItems: 'center', gap: 6,
           padding: '8px 14px', borderRadius: 20,
           background: 'rgba(240,112,48,0.12)',
@@ -723,7 +730,7 @@ function QuickPhotoLog({ userId, todayWellness, onLogged, compact = false }: {
           <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
           <circle cx="12" cy="13" r="4"/>
         </svg>
-        {compact ? 'Log meal' : 'Log meal with photo'}
+        {!iconOnly && (compact ? 'Log meal' : 'Log meal with photo')}
       </button>
 
       <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
@@ -913,11 +920,11 @@ function NutritionRingsCard({ todayWellness, calorieGoal, proteinGoal, userId, o
   userId?: string;
   onLogged: (slot: string, nutrition: NutritionData) => void;
 }) {
-  const [ringSize, setRingSize] = useState(76);
+  const [ringSize, setRingSize] = useState(64);
   useEffect(() => {
     function update() {
       const w = window.innerWidth;
-      setRingSize(w < 360 ? 62 : w < 420 ? 70 : 76);
+      setRingSize(w < 380 ? 58 : w < 480 ? 64 : 72);
     }
     update();
     window.addEventListener('resize', update);
@@ -938,11 +945,11 @@ function NutritionRingsCard({ todayWellness, calorieGoal, proteinGoal, userId, o
       marginBottom: 14, padding: '8px 0 16px',
       borderBottom: '1px solid rgba(255,255,255,0.05)',
     }}>
-      {/* Log button — left */}
-      <QuickPhotoLog userId={userId} todayWellness={todayWellness} onLogged={onLogged} compact />
+      {/* Log button — left, icon-only to save space */}
+      <QuickPhotoLog userId={userId} todayWellness={todayWellness} onLogged={onLogged} compact iconOnly />
 
       {/* Sugar, Calories, Protein — right */}
-      <Link href="/nutrition" style={{ display: 'flex', alignItems: 'flex-start', gap: ringSize < 70 ? 10 : 14, textDecoration: 'none' }}>
+      <Link href="/nutrition" style={{ display: 'flex', alignItems: 'flex-start', gap: ringSize < 64 ? 8 : 10, textDecoration: 'none' }}>
         <Ring value={totalSugar} goal={0} color="var(--warm)" label="Sugar" unit="g" size={ringSize} animDelay={0} />
         <Ring value={totalCal} goal={calorieGoal} color="#F07030" label="Calories" unit="kcal" size={ringSize} animDelay={120} />
         <Ring value={totalPro} goal={proteinGoal} color="var(--blue)" label="Protein" unit="g" size={ringSize} animDelay={240} />
