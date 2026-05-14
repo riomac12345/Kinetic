@@ -619,10 +619,11 @@ const MEAL_SLOTS = [
   { key: 'pre_climb_nutrition' as const, foodKey: 'food_pre_climb' as const, label: 'Pre-climb' },
 ];
 
-function QuickPhotoLog({ userId, todayWellness, onLogged }: {
+function QuickPhotoLog({ userId, todayWellness, onLogged, compact = false }: {
   userId?: string;
   todayWellness: WellnessLog | null;
   onLogged: (slot: string, nutrition: NutritionData) => void;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<typeof MEAL_SLOTS[number] | null>(null);
@@ -684,7 +685,15 @@ function QuickPhotoLog({ userId, todayWellness, onLogged }: {
       <button
         onClick={() => { setOpen(true); setResult(null); setSelectedSlot(null); }}
         title="Log a meal with photo"
-        style={{
+        style={compact ? {
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '8px 14px', borderRadius: 20,
+          background: 'rgba(240,112,48,0.12)',
+          border: '1px solid rgba(240,112,48,0.3)', color: '#F07030', cursor: 'pointer',
+          fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 700,
+          letterSpacing: '0.06em', textTransform: 'uppercase',
+          transition: 'all 140ms ease', whiteSpace: 'nowrap',
+        } : {
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           padding: '13px 20px', borderRadius: 10,
           background: 'linear-gradient(135deg, #F07030 0%, #F59050 100%)',
@@ -694,14 +703,14 @@ function QuickPhotoLog({ userId, todayWellness, onLogged }: {
           boxShadow: '0 0 18px rgba(240,112,48,0.35)',
           transition: 'opacity 140ms ease',
         }}
-        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.85'; }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.75'; }}
         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width={compact ? 13 : 16} height={compact ? 13 : 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
           <circle cx="12" cy="13" r="4"/>
         </svg>
-        Log meal with photo
+        {compact ? 'Log meal' : 'Log meal with photo'}
       </button>
 
       <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
@@ -755,7 +764,7 @@ function QuickPhotoLog({ userId, todayWellness, onLogged }: {
               <div>
                 <p style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text)', marginBottom: 4 }}>Which meal?</p>
                 <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 20 }}>Select a slot, then take or choose a photo.</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
                   {MEAL_SLOTS.map(slot => {
                     const alreadyLogged = todayWellness?.[slot.key] != null;
                     return (
@@ -776,6 +785,9 @@ function QuickPhotoLog({ userId, todayWellness, onLogged }: {
                     );
                   })}
                 </div>
+                <button onClick={() => setOpen(false)} style={{ width: '100%', padding: '12px', background: 'var(--surface-2)', border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-2)', borderRadius: 10 }}>
+                  Cancel
+                </button>
               </div>
             )}
           </div>
@@ -785,41 +797,64 @@ function QuickPhotoLog({ userId, todayWellness, onLogged }: {
   );
 }
 
-function Ring({ value, goal, color, label, unit, size = 88 }: {
-  value: number; goal: number; color: string; label: string; unit: string; size?: number;
+function Ring({ value, goal, color, label, unit, size = 88, animDelay = 0 }: {
+  value: number; goal: number; color: string; label: string; unit: string; size?: number; animDelay?: number;
 }) {
-  const r = (size - 12) / 2;
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 80 + animDelay);
+    return () => clearTimeout(t);
+  }, [animDelay]);
+
+  const sw = 5;
+  const r = (size - sw * 2 - 2) / 2;
   const circ = 2 * Math.PI * r;
   const pct = goal > 0 ? Math.min(value / goal, 1) : 0;
   const over = goal > 0 && value > goal;
   const strokeColor = over ? 'var(--danger)' : color;
-  const offset = circ * (1 - pct);
+  const offset = ready ? circ * (1 - pct) : circ;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
       <div style={{ position: 'relative', width: size, height: size }}>
-        <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--border)" strokeWidth={7} />
+        <svg width={size} height={size} style={{
+          transform: 'rotate(-90deg)',
+          filter: ready && pct > 0 ? `drop-shadow(0 0 6px ${strokeColor}60)` : 'none',
+          transition: 'filter 800ms ease',
+        }}>
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={sw} />
           <circle
             cx={size/2} cy={size/2} r={r} fill="none"
-            stroke={strokeColor} strokeWidth={7}
+            stroke={strokeColor} strokeWidth={sw + 1}
             strokeLinecap="round"
             strokeDasharray={circ}
             strokeDashoffset={offset}
-            style={{ transition: 'stroke-dashoffset 600ms ease, stroke 300ms ease' }}
+            style={{ transition: ready ? 'stroke-dashoffset 900ms cubic-bezier(0.34, 1.56, 0.64, 1), stroke 300ms ease' : 'none' }}
           />
         </svg>
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: size > 80 ? 16 : 13, fontWeight: 700, color: over ? 'var(--danger)' : 'var(--text)', lineHeight: 1 }}>
+          <span style={{
+            fontFamily: 'var(--font-mono)', fontSize: size > 70 ? 14 : 12, fontWeight: 700,
+            color: over ? 'var(--danger)' : 'var(--text)', lineHeight: 1, letterSpacing: '-0.02em',
+            opacity: ready ? 1 : 0, transition: 'opacity 400ms ease',
+            transitionDelay: ready ? `${300 + animDelay}ms` : '0ms',
+          }}>
             {value >= 1000 ? `${(value/1000).toFixed(1)}k` : Math.round(value)}
           </span>
-          <span style={{ fontFamily: 'var(--font-display)', fontSize: 8, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-3)', marginTop: 2 }}>{unit}</span>
+          <span style={{
+            fontFamily: 'var(--font-display)', fontSize: 7, fontWeight: 700, letterSpacing: '0.04em',
+            color: strokeColor, opacity: ready ? 0.85 : 0, marginTop: 2,
+            transition: 'opacity 400ms ease',
+            transitionDelay: ready ? `${350 + animDelay}ms` : '0ms',
+          }}>{unit}</span>
         </div>
       </div>
-      <div style={{ textAlign: 'center' }}>
-        <p style={{ fontFamily: 'var(--font-display)', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-2)' }}>{label}</p>
-        {goal > 0 && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-3)', marginTop: 1 }}>/ {goal >= 1000 ? `${(goal/1000).toFixed(1)}k` : goal}{unit}</p>}
-      </div>
+      <p style={{
+        fontFamily: 'var(--font-display)', fontSize: 8, fontWeight: 700,
+        letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-3)',
+        opacity: ready ? 1 : 0, transition: 'opacity 300ms ease',
+        transitionDelay: ready ? `${400 + animDelay}ms` : '0ms',
+      }}>{label}</p>
     </div>
   );
 }
@@ -831,34 +866,32 @@ function NutritionRingsCard({ todayWellness, calorieGoal, proteinGoal, userId, o
   userId?: string;
   onLogged: (slot: string, nutrition: NutritionData) => void;
 }) {
-  let totalCal = 0, totalPro = 0, totalCarb = 0, totalFat = 0;
+  let totalCal = 0, totalPro = 0;
   if (todayWellness) {
     for (const slot of MEAL_SLOTS) {
       const n = todayWellness[slot.key];
-      if (n) { totalCal += n.calories; totalPro += n.protein; totalCarb += n.carbs; totalFat += n.fat; }
+      if (n) { totalCal += n.calories; totalPro += n.protein; }
     }
   }
 
   return (
-    <div className="anim-fade-up-1 glass-card" style={{ padding: '18px 20px', marginBottom: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <p style={{ fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text)' }}>Nutrition Today</p>
-        <Link href="/nutrition" style={{ fontFamily: 'var(--font-display)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-3)', textDecoration: 'none', transition: 'color 140ms ease' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'; }}
-        >
-          Details →
-        </Link>
+    <div className="anim-fade-up-1" style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      marginBottom: 14, padding: '8px 0 16px',
+      borderBottom: '1px solid rgba(255,255,255,0.05)',
+    }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 1 }}>Nutrition</p>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-2)' }}>Today</p>
+        </div>
+        <QuickPhotoLog userId={userId} todayWellness={todayWellness} onLogged={onLogged} compact />
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', marginBottom: 16 }}>
-        <Ring value={totalCal} goal={calorieGoal} color="#F07030" label="Calories" unit="kcal" size={96} />
-        <Ring value={totalPro} goal={proteinGoal} color="var(--blue)" label="Protein" unit="g" size={96} />
-        <Ring value={totalCarb} goal={0} color="var(--warm)" label="Carbs" unit="g" size={72} />
-        <Ring value={totalFat} goal={0} color="var(--text-2)" label="Fat" unit="g" size={72} />
-      </div>
-
-      <QuickPhotoLog userId={userId} todayWellness={todayWellness} onLogged={onLogged} />
+      <Link href="/nutrition" style={{ display: 'flex', alignItems: 'flex-start', gap: 18, textDecoration: 'none', marginRight: '15%' }}>
+        <Ring value={totalCal} goal={calorieGoal} color="#F07030" label="Calories" unit="kcal" size={90} animDelay={0} />
+        <Ring value={totalPro} goal={proteinGoal} color="var(--blue)" label="Protein" unit="g" size={90} animDelay={120} />
+      </Link>
     </div>
   );
 }
