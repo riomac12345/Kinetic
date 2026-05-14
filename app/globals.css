@@ -64,25 +64,7 @@ body {
   overflow-x: hidden;
 }
 
-/* ── Perspective grid ── */
-body::before {
-  content: '';
-  position: fixed;
-  bottom: 0;
-  left: -120%;
-  right: -120%;
-  height: 62vh;
-  background-image:
-    linear-gradient(rgba(20, 16, 50, 0.18) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(20, 16, 50, 0.18) 1px, transparent 1px);
-  background-size: 56px 56px;
-  transform: perspective(600px) rotateX(58deg);
-  transform-origin: bottom center;
-  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.4) 30%, rgba(0,0,0,1) 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.4) 30%, rgba(0,0,0,1) 100%);
-  pointer-events: none;
-  z-index: 0;
-}
+/* Grid background rendered via GridBackground component */
 
 /* ── Ambient radial glow ── */
 body::after {
