@@ -627,21 +627,32 @@ function QuickPhotoLog({ userId, todayWellness, onLogged, compact = false }: {
 }) {
   const [open, setOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<typeof MEAL_SLOTS[number] | null>(null);
+  const [descriptionStep, setDescriptionStep] = useState(false);
+  const [photoDescription, setPhotoDescription] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<NutritionData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
+  function reset() {
+    setSelectedSlot(null); setDescriptionStep(false);
+    setPhotoDescription(''); setResult(null); setError(null);
+  }
+
   function pickSlot(slot: typeof MEAL_SLOTS[number]) {
     setSelectedSlot(slot);
-    setResult(null);
-    setError(null);
+    setResult(null); setError(null);
+    setDescriptionStep(true);
+  }
+
+  function openCamera() {
     setTimeout(() => fileRef.current?.click(), 50);
   }
 
   async function handleFile(file: File) {
     if (!selectedSlot || !userId) return;
+    setDescriptionStep(false);
     setAnalyzing(true);
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -652,7 +663,7 @@ function QuickPhotoLog({ userId, todayWellness, onLogged, compact = false }: {
         const res = await fetch('/api/analyze-meal', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageBase64: base64, mimeType }),
+          body: JSON.stringify({ imageBase64: base64, mimeType, description: photoDescription }),
         });
         if (res.ok) {
           const nutrition: NutritionData = await res.json();
@@ -680,10 +691,12 @@ function QuickPhotoLog({ userId, todayWellness, onLogged, compact = false }: {
 
   if (!userId) return null;
 
+  const btnStyle: React.CSSProperties = { width: '100%', padding: '13px', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', borderRadius: 10, transition: 'opacity 140ms ease' };
+
   return (
     <>
       <button
-        onClick={() => { setOpen(true); setResult(null); setSelectedSlot(null); }}
+        onClick={() => { setOpen(true); reset(); }}
         title="Log a meal with photo"
         style={compact ? {
           display: 'flex', alignItems: 'center', gap: 6,
@@ -724,46 +737,80 @@ function QuickPhotoLog({ userId, todayWellness, onLogged, compact = false }: {
               <div style={{ width: 36, height: 3, background: 'rgba(240,112,48,0.3)', borderRadius: 2 }} />
             </div>
 
+            {/* ── Result ── */}
             {result ? (
               <div>
-                <p style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text)', marginBottom: 4 }}>
-                  Logged ✓
-                </p>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text)', marginBottom: 4 }}>Logged ✓</p>
                 <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 20 }}>{result.description}</p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 20 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
                   {[
                     { label: 'Cal', value: Math.round(result.calories), color: 'var(--accent)' },
                     { label: 'Pro', value: `${Math.round(result.protein)}g`, color: 'var(--blue)' },
                     { label: 'Carb', value: `${Math.round(result.carbs)}g`, color: 'var(--warm)' },
                     { label: 'Fat', value: `${Math.round(result.fat)}g`, color: 'var(--text-2)' },
                   ].map(({ label, value, color }) => (
-                    <div key={label} style={{ textAlign: 'center', padding: '10px', background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                    <div key={label} style={{ textAlign: 'center', padding: '10px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8 }}>
                       <p style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 700, color, lineHeight: 1 }}>{value}</p>
                       <p style={{ fontFamily: 'var(--font-display)', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-3)', marginTop: 4 }}>{label}</p>
                     </div>
                   ))}
                 </div>
-                <button onClick={() => setOpen(false)} style={{ width: '100%', padding: '13px', background: 'linear-gradient(135deg, #F07030 0%, #F59050 100%)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'white', borderRadius: 10, boxShadow: '0 0 20px rgba(240,112,48,0.35)' }}>
-                  Done
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => { setResult(null); setDescriptionStep(true); }} style={{ ...btnStyle, flex: 1, background: 'var(--surface-2)', color: 'var(--text-2)', border: '1px solid var(--border)' }}>
+                    Wrong? Retake
+                  </button>
+                  <button onClick={() => setOpen(false)} style={{ ...btnStyle, flex: 2, background: 'linear-gradient(135deg, #F07030 0%, #F59050 100%)', color: 'white', boxShadow: '0 0 20px rgba(240,112,48,0.35)' }}>
+                    Done
+                  </button>
+                </div>
               </div>
+
             ) : analyzing ? (
               <div style={{ textAlign: 'center', padding: '32px 0' }}>
                 <p style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text)', marginBottom: 8 }}>Analyzing…</p>
                 <p style={{ fontSize: 13, color: 'var(--text-3)' }}>Claude is identifying your meal</p>
               </div>
+
             ) : error ? (
               <div style={{ textAlign: 'center', padding: '24px 0' }}>
                 <p style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--danger)', marginBottom: 8 }}>Analysis failed</p>
                 <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 20 }}>{error}</p>
-                <button onClick={() => { setError(null); setSelectedSlot(null); }} style={{ padding: '11px 24px', background: 'var(--surface-2)', border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-2)', borderRadius: 8 }}>
+                <button onClick={() => { setError(null); setDescriptionStep(true); }} style={{ padding: '11px 24px', background: 'var(--surface-2)', border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-2)', borderRadius: 8 }}>
                   Try again
                 </button>
               </div>
+
+            ) : descriptionStep && selectedSlot ? (
+              /* ── Description + photo step ── */
+              <div>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text)', marginBottom: 2 }}>{selectedSlot.label}</p>
+                <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 18 }}>Add a note to help Claude (optional), then take your photo.</p>
+                <textarea
+                  value={photoDescription}
+                  onChange={e => setPhotoDescription(e.target.value)}
+                  placeholder="e.g. large portion, homemade, with extra sauce…"
+                  rows={3}
+                  style={{ width: '100%', padding: '12px', marginBottom: 14, background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)', outline: 'none', fontSize: 13, lineHeight: 1.6, resize: 'none', borderRadius: 10, fontFamily: 'inherit', transition: 'border-color 140ms ease' }}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                />
+                <button onClick={openCamera} style={{ ...btnStyle, marginBottom: 10, background: 'linear-gradient(135deg, #F07030 0%, #F59050 100%)', color: 'white', boxShadow: '0 0 20px rgba(240,112,48,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                  Take photo
+                </button>
+                <button onClick={() => { setDescriptionStep(false); setSelectedSlot(null); }} style={{ ...btnStyle, background: 'var(--surface-2)', color: 'var(--text-2)', border: '1px solid var(--border)' }}>
+                  Back
+                </button>
+              </div>
+
             ) : (
+              /* ── Meal slot picker ── */
               <div>
                 <p style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text)', marginBottom: 4 }}>Which meal?</p>
-                <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 20 }}>Select a slot, then take or choose a photo.</p>
+                <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 20 }}>Select a slot to continue.</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
                   {MEAL_SLOTS.map(slot => {
                     const alreadyLogged = todayWellness?.[slot.key] != null;
@@ -785,7 +832,7 @@ function QuickPhotoLog({ userId, todayWellness, onLogged, compact = false }: {
                     );
                   })}
                 </div>
-                <button onClick={() => setOpen(false)} style={{ width: '100%', padding: '12px', background: 'var(--surface-2)', border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-2)', borderRadius: 10 }}>
+                <button onClick={() => setOpen(false)} style={{ ...btnStyle, background: 'var(--surface-2)', color: 'var(--text-2)', border: '1px solid var(--border)' }}>
                   Cancel
                 </button>
               </div>
@@ -866,6 +913,17 @@ function NutritionRingsCard({ todayWellness, calorieGoal, proteinGoal, userId, o
   userId?: string;
   onLogged: (slot: string, nutrition: NutritionData) => void;
 }) {
+  const [ringSize, setRingSize] = useState(76);
+  useEffect(() => {
+    function update() {
+      const w = window.innerWidth;
+      setRingSize(w < 360 ? 62 : w < 420 ? 70 : 76);
+    }
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
   let totalCal = 0, totalPro = 0, totalSugar = 0;
   if (todayWellness) {
     for (const slot of MEAL_SLOTS) {
@@ -884,10 +942,10 @@ function NutritionRingsCard({ todayWellness, calorieGoal, proteinGoal, userId, o
       <QuickPhotoLog userId={userId} todayWellness={todayWellness} onLogged={onLogged} compact />
 
       {/* Sugar, Calories, Protein — right */}
-      <Link href="/nutrition" style={{ display: 'flex', alignItems: 'flex-start', gap: 18, textDecoration: 'none' }}>
-        <Ring value={totalSugar} goal={0} color="var(--warm)" label="Sugar" unit="g" size={90} animDelay={0} />
-        <Ring value={totalCal} goal={calorieGoal} color="#F07030" label="Calories" unit="kcal" size={90} animDelay={120} />
-        <Ring value={totalPro} goal={proteinGoal} color="var(--blue)" label="Protein" unit="g" size={90} animDelay={240} />
+      <Link href="/nutrition" style={{ display: 'flex', alignItems: 'flex-start', gap: ringSize < 70 ? 10 : 14, textDecoration: 'none' }}>
+        <Ring value={totalSugar} goal={0} color="var(--warm)" label="Sugar" unit="g" size={ringSize} animDelay={0} />
+        <Ring value={totalCal} goal={calorieGoal} color="#F07030" label="Calories" unit="kcal" size={ringSize} animDelay={120} />
+        <Ring value={totalPro} goal={proteinGoal} color="var(--blue)" label="Protein" unit="g" size={ringSize} animDelay={240} />
       </Link>
     </div>
   );

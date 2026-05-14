@@ -5,11 +5,13 @@ const client = new Anthropic();
 
 export async function POST(req: NextRequest) {
   try {
-    const { imageBase64, mimeType } = await req.json();
+    const { imageBase64, mimeType, description } = await req.json();
 
     if (!imageBase64 || !mimeType) {
       return NextResponse.json({ error: 'Missing image data' }, { status: 400 });
     }
+
+    const hint = description?.trim() ? `\n\nUser note: "${description.trim()}"` : '';
 
     const response = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
@@ -34,7 +36,7 @@ export async function POST(req: NextRequest) {
   "confidence": "high"
 }
 
-Estimate realistic values for a typical serving of what you see. If you cannot identify food, return confidence "low" and zeroes.`,
+Estimate realistic values for a typical serving of what you see. If you cannot identify food, return confidence "low" and zeroes.${hint}`,
             },
           ],
         },
