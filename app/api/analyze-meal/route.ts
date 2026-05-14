@@ -42,7 +42,9 @@ Estimate realistic values for a typical serving of what you see. If you cannot i
     });
 
     const text = (response.content[0] as { type: string; text: string }).text.trim();
-    const nutrition = JSON.parse(text);
+    // Strip markdown code fences if Claude wraps the JSON
+    const cleaned = text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
+    const nutrition = JSON.parse(cleaned);
     return NextResponse.json(nutrition);
   } catch (err) {
     console.error('analyze-meal error:', err);

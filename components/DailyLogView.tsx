@@ -140,6 +140,10 @@ function MealField({ label, value, onChange, placeholder, accent, nutrition, onN
           const data: NutritionData = await res.json();
           onChange(data.description);
           onNutritionChange(data);
+        } else {
+          const body = await res.json().catch(() => ({}));
+          console.error('analyze-meal failed:', res.status, body);
+          alert(`Photo analysis failed (${res.status}): ${body?.error ?? 'Check your ANTHROPIC_API_KEY'}`);
         }
         setAnalyzing(false);
       };

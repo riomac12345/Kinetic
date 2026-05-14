@@ -628,12 +628,14 @@ function QuickPhotoLog({ userId, todayWellness, onLogged }: {
   const [selectedSlot, setSelectedSlot] = useState<typeof MEAL_SLOTS[number] | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<NutritionData | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
   function pickSlot(slot: typeof MEAL_SLOTS[number]) {
     setSelectedSlot(slot);
     setResult(null);
+    setError(null);
     setTimeout(() => fileRef.current?.click(), 50);
   }
 
@@ -662,8 +664,14 @@ function QuickPhotoLog({ userId, todayWellness, onLogged }: {
           }, { onConflict: 'user_id,date' });
           setResult(nutrition);
           onLogged(selectedSlot.key, nutrition);
+        } else {
+          const body = await res.json().catch(() => ({}));
+          setError(`API error ${res.status}: ${body?.error ?? 'Unknown error'}`);
         }
-      } catch { /* ignore */ }
+      } catch (err) {
+        setError('Analysis failed — check your ANTHROPIC_API_KEY is set correctly.');
+        console.error('analyze-meal:', err);
+      }
       setAnalyzing(false);
     };
     reader.readAsDataURL(file);
@@ -734,6 +742,14 @@ function QuickPhotoLog({ userId, todayWellness, onLogged }: {
               <div style={{ textAlign: 'center', padding: '32px 0' }}>
                 <p style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text)', marginBottom: 8 }}>Analyzing…</p>
                 <p style={{ fontSize: 13, color: 'var(--text-3)' }}>Claude is identifying your meal</p>
+              </div>
+            ) : error ? (
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--danger)', marginBottom: 8 }}>Analysis failed</p>
+                <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 20 }}>{error}</p>
+                <button onClick={() => { setError(null); setSelectedSlot(null); }} style={{ padding: '11px 24px', background: 'var(--surface-2)', border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-2)', borderRadius: 8 }}>
+                  Try again
+                </button>
               </div>
             ) : (
               <div>
