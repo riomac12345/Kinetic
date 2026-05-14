@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { Chakra_Petch, Outfit, IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
 import Sidebar from '@/components/Sidebar';
-import GridBackground from '@/components/GridBackground';
 
 const chakraPetch = Chakra_Petch({
   weight: ['400', '500', '600', '700'],
@@ -34,7 +33,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${chakraPetch.variable} ${outfit.variable} ${ibmPlexMono.variable}`}>
       <body className="antialiased">
-        <GridBackground />
         <Sidebar />
         <main className="main-content min-h-dvh">
           <div className="max-w-2xl mx-auto">
