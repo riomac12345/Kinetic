@@ -53,7 +53,7 @@ export default async function DashboardPage() {
       .eq('user_id', user.id),
     supabase
       .from('wellness_logs')
-      .select('id, sleep_hours, food_breakfast, food_lunch, food_dinner, food_pre_climb, climb_strength')
+      .select('id, sleep_hours, food_breakfast, food_lunch, food_dinner, food_pre_climb, climb_strength, breakfast_nutrition, lunch_nutrition, dinner_nutrition, pre_climb_nutrition')
       .eq('user_id', user.id)
       .eq('date', today)
       .single(),
@@ -89,6 +89,8 @@ export default async function DashboardPage() {
       userId={user.id}
       totalDaysLogged={totalDaysLogged}
       todayWellness={todayWellness ?? null}
+      calorieGoal={(profile as any)?.calorie_goal ?? 2000}
+      proteinGoal={(profile as any)?.protein_goal ?? 150}
     />
   );
 }

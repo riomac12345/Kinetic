@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import LogSheet from './LogSheet';
 
@@ -19,252 +19,73 @@ const MOTIVATIONAL = [
   'The grind never lies.',
   'Strong body, sharp mind.',
   'Small steps. Big results.',
-  'Today\'s effort is tomorrow\'s strength.',
-  'Champions train when no one\'s watching.',
+  "Today's effort is tomorrow's strength.",
+  "Champions train when no one's watching.",
 ];
 
-function getMotivation() {
-  const day = new Date().getDay();
-  const hour = new Date().getHours();
-  return MOTIVATIONAL[(day * 3 + Math.floor(hour / 8)) % MOTIVATIONAL.length];
-}
-
-function greeting() {
-  const h = new Date().getHours();
-  if (h >= 5 && h < 12) return 'Morning';
-  if (h >= 12 && h < 17) return 'Afternoon';
-  if (h >= 17 && h < 22) return 'Evening';
-  return 'Night owl';
-}
-
-function formatDate() {
-  return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-}
-
-function IconCheck({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
-
-function IconChevronRight({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="9 18 15 12 9 6" />
-    </svg>
-  );
-}
-
-function IconPlus({ size = 15 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  );
-}
+const PARTICLE_COLORS = ['#F07030', '#F59050', '#FF6B35', '#00D4FF', '#16141F', '#FF4757'];
 
 const TYPE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  reps:     { bg: 'rgba(124,90,246,0.12)',  border: 'rgba(124,90,246,0.45)',  text: '#a78bf8' },
-  weighted: { bg: 'rgba(251,146,60,0.12)',  border: 'rgba(251,146,60,0.45)',  text: '#fb923c' },
-  timed:    { bg: 'rgba(56,189,248,0.12)',  border: 'rgba(56,189,248,0.45)',  text: '#38bdf8' },
+  reps:     { bg: 'var(--accent-bg)',  border: 'var(--accent-border)',  text: 'var(--accent-light)' },
+  weighted: { bg: 'var(--warm-bg)',    border: 'var(--warm-border)',    text: 'var(--warm)' },
+  timed:    { bg: 'var(--blue-bg)',    border: 'var(--blue-border)',    text: 'var(--blue)' },
 };
 
-function ProgressRing({ done, total }: { done: number; total: number }) {
-  const r = 28;
-  const circ = 2 * Math.PI * r;
-  const pct = total > 0 ? done / total : 0;
+/* ── Confetti burst on completion ── */
+function Confetti({ active }: { active: boolean }) {
+  if (!active) return null;
+  const particles = Array.from({ length: 28 }, (_, i) => {
+    const angle = (i / 28) * 360 + Math.random() * 20;
+    const dist = 60 + Math.random() * 80;
+    const dx = Math.cos((angle * Math.PI) / 180) * dist;
+    const dy = Math.sin((angle * Math.PI) / 180) * dist - 40;
+    const color = PARTICLE_COLORS[i % PARTICLE_COLORS.length];
+    const size = 5 + Math.random() * 6;
+    const delay = Math.random() * 0.2;
+    return { dx, dy, color, size, delay, rot: Math.random() * 720 - 360 };
+  });
+
   return (
-    <div className="relative anim-float" style={{ width: 72, height: 72 }}>
-      <svg className="-rotate-90" width="72" height="72" viewBox="0 0 72 72">
-        <circle cx="36" cy="36" r={r} fill="none" stroke="rgba(124,90,246,0.1)" strokeWidth="5" />
-        <circle
-          cx="36" cy="36" r={r} fill="none"
-          stroke="#7c5af6"
-          strokeWidth="5"
-          strokeLinecap="round"
-          strokeDasharray={circ}
-          strokeDashoffset={circ * (1 - pct)}
+    <div style={{ position: 'absolute', top: '50%', left: '50%', pointerEvents: 'none', zIndex: 10 }}>
+      {particles.map((p, i) => (
+        <div
+          key={i}
+          className="confetti-particle"
           style={{
-            transition: 'stroke-dashoffset 700ms cubic-bezier(0.34,1.56,0.64,1)',
-            filter: pct > 0 ? 'drop-shadow(0 0 8px rgba(124,90,246,0.7))' : 'none',
-          }}
+            backgroundColor: p.color,
+            width: p.size, height: p.size,
+            marginLeft: -p.size / 2, marginTop: -p.size / 2,
+            '--dx': `${p.dx}px`,
+            '--dy': `${p.dy}px`,
+            '--rot': `${p.rot}deg`,
+            animationDelay: `${p.delay}s`,
+            animationDuration: `${0.7 + Math.random() * 0.4}s`,
+          } as React.CSSProperties}
         />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-bold text-white leading-none" style={{ fontSize: 18, letterSpacing: '-0.03em' }}>{done}</span>
-        <span className="font-medium leading-none mt-0.5" style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>/{total}</span>
-      </div>
+      ))}
     </div>
   );
 }
 
-type ExerciseRowProps = {
-  name: string; type: string; sets: number; reps: number | null;
-  weight: number | null; holdTime: number | null; index: number;
-  done: boolean; onDone: () => void; onLog?: () => void;
-};
-
-function ExerciseRow({ name, type, sets, reps, weight, holdTime, index, done, onDone, onLog }: ExerciseRowProps) {
-  const colors = TYPE_COLORS[type] ?? TYPE_COLORS.reps;
-
-  const targetLabel = (() => {
-    if (type === 'timed' && holdTime) return `${sets} × ${holdTime}s`;
-    if (type === 'weighted' && weight) return `${sets} × ${reps} @ ${weight}kg`;
-    if (reps) return `${sets} × ${reps}`;
-    return `${sets} sets`;
-  })();
-
-  const typeLabel = type === 'timed' ? 'Hold' : type === 'weighted' ? 'Weighted' : 'Reps';
-
+function IconCheck({ size = 10 }: { size?: number }) {
   return (
-    <div
-      className="anim-fade-up"
-      style={{
-        animationDelay: `${index * 0.07}s`,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 14,
-        padding: '14px 16px',
-        borderRadius: 18,
-        background: done
-          ? 'rgba(124,90,246,0.07)'
-          : 'rgba(255,255,255,0.025)',
-        border: done
-          ? '1px solid rgba(124,90,246,0.2)'
-          : '1px solid rgba(124,90,246,0.08)',
-        transition: 'all 220ms ease',
-      }}
-    >
-      {/* Type accent bar */}
-      <div style={{
-        width: 3, height: 36, borderRadius: 99, flexShrink: 0,
-        background: done ? 'rgba(124,90,246,0.35)' : colors.border,
-        transition: 'background 220ms ease',
-      }} />
-
-      {/* Check */}
-      <button
-        onClick={onDone}
-        style={{
-          width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: done ? '#7c5af6' : 'transparent',
-          border: done ? '2px solid #7c5af6' : '2px solid rgba(255,255,255,0.15)',
-          color: '#fff',
-          boxShadow: done ? '0 0 14px rgba(124,90,246,0.6)' : 'none',
-          transition: 'all 220ms cubic-bezier(0.34,1.56,0.64,1)',
-          cursor: 'pointer',
-          touchAction: 'manipulation',
-        }}
-      >
-        {done && <IconCheck size={12} />}
-      </button>
-
-      {/* Info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{
-          fontSize: 15, fontWeight: 600,
-          color: done ? 'rgba(255,255,255,0.25)' : '#ffffff',
-          textDecoration: done ? 'line-through' : 'none',
-          transition: 'color 220ms ease', letterSpacing: '-0.01em',
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>
-          {name}
-        </p>
-        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{targetLabel}</p>
-      </div>
-
-      {/* Type pill */}
-      <span style={{
-        fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
-        padding: '3px 8px', borderRadius: 99, flexShrink: 0,
-        background: done ? 'transparent' : colors.bg,
-        color: done ? 'rgba(255,255,255,0.2)' : colors.text,
-        border: done ? '1px solid rgba(255,255,255,0.06)' : `1px solid ${colors.border}`,
-        transition: 'all 220ms ease',
-      }}>
-        {typeLabel}
-      </span>
-
-      {/* Log button */}
-      <button
-        onClick={onLog}
-        style={{
-          width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(124,90,246,0.06)',
-          border: '1px solid rgba(124,90,246,0.12)',
-          color: 'rgba(255,255,255,0.3)', cursor: 'pointer',
-          transition: 'background 150ms ease, color 150ms ease, border-color 150ms ease',
-        }}
-        onMouseEnter={e => {
-          (e.currentTarget as HTMLElement).style.background = colors.bg;
-          (e.currentTarget as HTMLElement).style.color = colors.text;
-          (e.currentTarget as HTMLElement).style.borderColor = colors.border;
-        }}
-        onMouseLeave={e => {
-          (e.currentTarget as HTMLElement).style.background = 'rgba(124,90,246,0.06)';
-          (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.3)';
-          (e.currentTarget as HTMLElement).style.borderColor = 'rgba(124,90,246,0.12)';
-        }}
-      >
-        <IconChevronRight size={14} />
-      </button>
-    </div>
+    <svg width={size} height={size} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="10 3 5 9 2 6"/>
+    </svg>
   );
 }
-
-function EmptyPlan() {
+function IconChevronRight({ size = 12 }: { size?: number }) {
   return (
-    <div className="anim-fade-up" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '48px 24px' }}>
-      <div style={{
-        width: 64, height: 64, borderRadius: 20, marginBottom: 20,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(124,90,246,0.1)',
-        border: '1px solid rgba(124,90,246,0.2)',
-        boxShadow: '0 0 24px rgba(124,90,246,0.15)',
-      }}>
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a78bf8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M6 5v14" /><path d="M18 5v14" /><path d="M4 7h4" /><path d="M4 17h4" /><path d="M16 7h4" /><path d="M16 17h4" /><path d="M8 12h8" />
-        </svg>
-      </div>
-      <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', letterSpacing: '-0.03em', marginBottom: 8 }}>No training plan yet</h3>
-      <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.38)', lineHeight: 1.65, marginBottom: 28 }}>Build your weekly schedule and start tracking your progress.</p>
-      <Link
-        href="/plan"
-        className="anim-glow"
-        style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '12px 24px', borderRadius: 99,
-          background: 'linear-gradient(135deg, #7c5af6 0%, #6646e0 100%)',
-          color: '#fff', fontSize: 14, fontWeight: 700,
-          textDecoration: 'none',
-        }}
-      >
-        <IconPlus size={14} /> Create plan
-      </Link>
-    </div>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9 18 15 12 9 6"/>
+    </svg>
   );
 }
-
-function RestDay() {
+function IconPlus({ size = 13 }: { size?: number }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '48px 24px' }}>
-      <div style={{
-        width: 64, height: 64, borderRadius: 20, marginBottom: 20,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(124,90,246,0.1)',
-      }}>
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" strokeLinecap="round">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-        </svg>
-      </div>
-      <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', letterSpacing: '-0.03em', marginBottom: 8 }}>Rest day</h3>
-      <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.38)', lineHeight: 1.65 }}>Recovery is part of the program.<br />You earned it.</p>
-    </div>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
   );
 }
 
@@ -276,17 +97,18 @@ type PlanExerciseItem = {
 type PlanDayItem = {
   id: string; day_of_week: number; is_rest: boolean; plan_exercises: PlanExerciseItem[];
 };
-
+type NutritionData = { description: string; calories: number; protein: number; carbs: number; fat: number; confidence: string };
 type WellnessLog = {
   id: string;
   sleep_hours: number | null;
-  food_breakfast: string | null;
-  food_lunch: string | null;
-  food_dinner: string | null;
-  food_pre_climb: string | null;
+  food_breakfast: string | null; food_lunch: string | null;
+  food_dinner: string | null; food_pre_climb: string | null;
   climb_strength: number | null;
+  breakfast_nutrition?: NutritionData | null;
+  lunch_nutrition?: NutritionData | null;
+  dinner_nutrition?: NutritionData | null;
+  pre_climb_nutrition?: NutritionData | null;
 };
-
 type Props = {
   profile: { username: string; name: string | null } | null;
   plan: { id: string; name: string; plan_days: PlanDayItem[] } | null;
@@ -294,8 +116,180 @@ type Props = {
   loggedExerciseIds?: string[];
   totalDaysLogged?: number;
   todayWellness?: WellnessLog | null;
+  userId?: string;
+  calorieGoal?: number;
+  proteinGoal?: number;
 };
 
+/* ── Exercise row ── */
+type ExerciseRowProps = {
+  name: string; type: string; sets: number; reps: number | null;
+  weight: number | null; holdTime: number | null; index: number;
+  done: boolean; onDone: () => void; onLog?: () => void;
+};
+
+function ExerciseRow({ name, type, sets, reps, weight, holdTime, done, onDone, onLog }: ExerciseRowProps) {
+  const colors = TYPE_COLORS[type] ?? TYPE_COLORS.reps;
+  const typeLabel = type === 'timed' ? 'Hold' : type === 'weighted' ? 'Wtd' : 'Reps';
+  const targetLabel = (() => {
+    if (type === 'timed' && holdTime) return `${sets}×${holdTime}s`;
+    if (type === 'weighted' && weight) return `${sets}×${reps}@${weight}kg`;
+    if (reps) return `${sets}×${reps}`;
+    return `${sets} sets`;
+  })();
+
+  const [justDone, setJustDone] = useState(false);
+
+  function handleDone() {
+    if (!done) setJustDone(true);
+    onDone();
+    setTimeout(() => setJustDone(false), 600);
+  }
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '13px 16px',
+      borderBottom: '1px solid rgba(240, 112, 48, 0.08)',
+      transition: 'background 160ms ease',
+    }}>
+      {/* Checkbox */}
+      <button
+        onClick={handleDone}
+        className={justDone ? 'anim-log-success' : ''}
+        style={{
+          width: 22, height: 22, flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: done
+            ? 'linear-gradient(135deg, #F07030 0%, #F59050 100%)'
+            : 'transparent',
+          border: done
+            ? '2px solid rgba(240, 112, 48, 0.8)'
+            : '2px solid rgba(240, 112, 48, 0.3)',
+          borderRadius: 6,
+          color: 'white', cursor: 'pointer',
+          boxShadow: done ? '0 0 10px rgba(240, 112, 48, 0.4)' : 'none',
+          touchAction: 'manipulation',
+          transition: 'all 180ms ease',
+        }}
+      >
+        {done && (
+          <span className="anim-check">
+            <IconCheck size={10} />
+          </span>
+        )}
+      </button>
+
+      {/* Name */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{
+          fontSize: 14, fontWeight: 500,
+          color: done ? 'var(--text-3)' : 'var(--text)',
+          textDecoration: done ? 'line-through' : 'none',
+          textDecorationColor: 'rgba(240,112,48,0.3)',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          transition: 'color 160ms ease',
+        }}>
+          {name}
+        </p>
+      </div>
+
+      {/* Target */}
+      <span style={{
+        fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-3)',
+        whiteSpace: 'nowrap', flexShrink: 0,
+      }}>{targetLabel}</span>
+
+      {/* Type tag */}
+      <span style={{
+        padding: '2px 7px', flexShrink: 0, borderRadius: 4,
+        fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+        background: done ? 'transparent' : colors.bg,
+        border: done ? '1px solid rgba(240,112,48,0.1)' : `1px solid ${colors.border}`,
+        color: done ? 'var(--text-3)' : colors.text,
+        transition: 'all 160ms ease',
+      }}>
+        {typeLabel}
+      </span>
+
+      {/* Log button */}
+      <button
+        onClick={onLog}
+        style={{
+          width: 30, height: 30, flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(240,112,48,0.06)',
+          border: '1px solid rgba(240,112,48,0.2)',
+          borderRadius: 8,
+          color: 'var(--text-3)', cursor: 'pointer',
+          transition: 'all 160ms ease',
+        }}
+        onMouseEnter={e => {
+          (e.currentTarget as HTMLElement).style.borderColor = 'rgba(240,112,48,0.5)';
+          (e.currentTarget as HTMLElement).style.color = 'var(--accent-light)';
+          (e.currentTarget as HTMLElement).style.background = 'rgba(240,112,48,0.12)';
+        }}
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLElement).style.borderColor = 'rgba(240,112,48,0.2)';
+          (e.currentTarget as HTMLElement).style.color = 'var(--text-3)';
+          (e.currentTarget as HTMLElement).style.background = 'rgba(240,112,48,0.06)';
+        }}
+      >
+        <IconChevronRight size={12} />
+      </button>
+    </div>
+  );
+}
+
+function EmptyPlan() {
+  return (
+    <div style={{ padding: '40px 0', textAlign: 'center' }}>
+      <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>No training plan yet</p>
+      <p style={{ fontSize: 13, color: 'var(--text-3)', lineHeight: 1.65, marginBottom: 24 }}>
+        Build your weekly schedule to get started.
+      </p>
+      <Link
+        href="/plan"
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          padding: '11px 22px',
+          background: 'linear-gradient(135deg, #F07030 0%, #F59050 100%)',
+          color: 'white',
+          fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700,
+          letterSpacing: '0.08em', textTransform: 'uppercase',
+          textDecoration: 'none', borderRadius: 10,
+          boxShadow: '0 0 20px rgba(240, 112, 48, 0.4)',
+        }}
+      >
+        <IconPlus size={12} /> Create plan
+      </Link>
+    </div>
+  );
+}
+
+function RestDay() {
+  return (
+    <div style={{ padding: '40px 0', textAlign: 'center' }}>
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: 48, height: 48, borderRadius: 12,
+        background: 'rgba(240,112,48,0.1)', border: '1px solid rgba(240,112,48,0.2)',
+        marginBottom: 14,
+      }}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" strokeWidth="1.8" strokeLinecap="round">
+          <path d="M12 2a9 9 0 0 0-9 9c0 3.07 1.54 5.79 3.9 7.44A9 9 0 1 0 12 2z"/>
+          <path d="M12 7v5l3 3"/>
+        </svg>
+      </div>
+      <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>Rest day</p>
+      <p style={{ fontSize: 13, color: 'var(--text-3)', lineHeight: 1.65 }}>
+        Recovery is part of the program. You earned it.
+      </p>
+    </div>
+  );
+}
+
+/* ── Fatigue modal ── */
 function FatigueModal({ sessionId, onDone }: { sessionId: string; onDone: () => void }) {
   const [saving, setSaving] = useState(false);
 
@@ -306,53 +300,66 @@ function FatigueModal({ sessionId, onDone }: { sessionId: string; onDone: () => 
     onDone();
   }
 
-  const colors = (n: number) =>
-    n <= 3 ? { bg: 'rgba(124,90,246,0.1)', border: 'rgba(124,90,246,0.25)', text: '#a78bf8' }
-    : n <= 6 ? { bg: 'rgba(251,146,60,0.1)', border: 'rgba(251,146,60,0.25)', text: '#fb923c' }
-    : { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.25)', text: '#f87171' };
+  const ratingColor = (n: number) =>
+    n <= 3 ? { bg: 'var(--accent-bg)', border: 'var(--accent-border)', text: 'var(--accent-light)' }
+    : n <= 6 ? { bg: 'var(--warm-bg)', border: 'var(--warm-border)', text: 'var(--warm)' }
+    : { bg: 'var(--danger-bg)', border: 'var(--danger-border)', text: 'var(--danger)' };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
       <div
-        className="anim-slide-up relative w-full rounded-t-[2rem] px-6 pt-4 pb-10"
+        className="anim-slide-up relative w-full"
         style={{
-          background: 'linear-gradient(160deg, #120f2a 0%, #0e0b24 100%)',
-          border: '1px solid rgba(124,90,246,0.2)',
-          boxShadow: '0 -24px 80px rgba(124,90,246,0.15)',
+          background: 'rgba(255, 255, 255, 0.98)',
+          borderTop: '1px solid rgba(240, 112, 48, 0.25)',
+          borderRadius: '20px 20px 0 0',
+          padding: '24px 24px 48px',
         }}
       >
-        <div className="flex justify-center mb-6">
-          <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(124,90,246,0.25)' }} />
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+          <div style={{ width: 36, height: 3, background: 'rgba(240,112,48,0.3)', borderRadius: 2 }} />
         </div>
-        <p className="text-xl font-bold text-white mb-1" style={{ letterSpacing: '-0.03em' }}>How tired do you feel?</p>
-        <p className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.4)' }}>Rate your fatigue — 1 (fresh) to 10 (exhausted)</p>
-        <div className="grid grid-cols-5 gap-2 mb-4">
+        <p style={{
+          fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700,
+          letterSpacing: '0.04em', textTransform: 'uppercase',
+          color: 'var(--text)', marginBottom: 4,
+        }}>
+          How tired do you feel?
+        </p>
+        <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 20 }}>1 = fresh  ·  10 = exhausted</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 16 }}>
           {[1,2,3,4,5,6,7,8,9,10].map(n => {
-            const c = colors(n);
+            const c = ratingColor(n);
             return (
               <button
                 key={n}
                 onClick={() => rate(n)}
                 disabled={saving}
                 style={{
-                  padding: '14px 0', borderRadius: 14,
-                  fontSize: 20, fontWeight: 800, letterSpacing: '-0.03em',
+                  padding: '14px 0', borderRadius: 10,
                   background: c.bg, border: `1px solid ${c.border}`, color: c.text,
-                  cursor: 'pointer', transition: 'opacity 150ms ease',
+                  fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 600,
+                  cursor: 'pointer', transition: 'all 140ms ease',
                 }}
                 onMouseEnter={e => (e.currentTarget.style.opacity = '0.75')}
                 onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-              >
-                {n}
-              </button>
+              >{n}</button>
             );
           })}
         </div>
         <button
           onClick={onDone}
-          className="w-full py-3 rounded-full text-sm font-semibold mt-1"
-          style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.35)' }}
+          style={{
+            width: '100%', padding: '12px', borderRadius: 10,
+            background: 'rgba(240,112,48,0.08)', border: '1px solid rgba(240,112,48,0.2)',
+            color: 'var(--text-3)', cursor: 'pointer',
+            fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 600,
+            letterSpacing: '0.08em', textTransform: 'uppercase',
+            transition: 'all 140ms ease',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(240,112,48,0.4)')}
+          onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(240,112,48,0.2)')}
         >
           Skip
         </button>
@@ -361,31 +368,34 @@ function FatigueModal({ sessionId, onDone }: { sessionId: string; onDone: () => 
   );
 }
 
-function QuickMealInput({ label, value, onChange, placeholder }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder: string;
+/* ── Wellness meal input ── */
+function MealInput({ label, value, onChange, placeholder, accent }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder: string; accent?: boolean;
 }) {
   return (
     <div>
-      <label style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(167,139,248,0.5)', display: 'block', marginBottom: 4 }}>{label}</label>
+      <label style={{
+        display: 'block', fontFamily: 'var(--font-display)',
+        fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+        color: accent ? 'var(--warm)' : 'var(--text-3)', marginBottom: 5,
+      }}>{label}</label>
       <input
-        type="text"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
+        type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
         style={{
-          width: '100%', padding: '8px 12px',
-          borderRadius: 12, fontSize: 12, color: '#ffffff',
-          background: 'rgba(124,90,246,0.07)',
-          border: '1px solid rgba(124,90,246,0.14)',
-          outline: 'none', transition: 'border-color 150ms ease',
+          width: '100%', padding: '9px 11px', borderRadius: 8,
+          background: 'rgba(255, 255, 255, 0.7)',
+          border: `1px solid ${accent ? 'var(--warm-border)' : 'rgba(240,112,48,0.18)'}`,
+          color: 'var(--text)', fontSize: 12, outline: 'none',
+          transition: 'border-color 140ms ease',
         }}
-        onFocus={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.5)')}
-        onBlur={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.14)')}
+        onFocus={e => (e.currentTarget.style.borderColor = accent ? 'var(--warm)' : 'var(--accent)')}
+        onBlur={e => (e.currentTarget.style.borderColor = accent ? 'var(--warm-border)' : 'rgba(240,112,48,0.18)')}
       />
     </div>
   );
 }
 
+/* ── Wellness quick-log card ── */
 function WellnessQuickLog({ userId, existing }: { userId?: string; existing: WellnessLog | null }) {
   const supabase = createClient();
   const [sleepHours, setSleepHours] = useState(existing?.sleep_hours?.toString() ?? '');
@@ -415,8 +425,7 @@ function WellnessQuickLog({ userId, existing }: { userId?: string; existing: Wel
     if (!userId || !today.current) return;
     setSaving(true);
     await supabase.from('wellness_logs').upsert({
-      user_id: userId,
-      date: today.current,
+      user_id: userId, date: today.current,
       sleep_hours: sleepHours ? parseFloat(sleepHours) : null,
       food_breakfast: breakfast.trim() || null,
       food_lunch: lunch.trim() || null,
@@ -429,106 +438,146 @@ function WellnessQuickLog({ userId, existing }: { userId?: string; existing: Wel
     setTimeout(() => setSaved(false), 2500);
   }
 
+  const strengthColor = (n: number) =>
+    n >= 7 ? { bg: 'var(--accent-bg)', border: 'var(--accent-border)', text: 'var(--accent-light)' }
+    : n >= 4 ? { bg: 'var(--warm-bg)', border: 'var(--warm-border)', text: 'var(--warm)' }
+    : { bg: 'var(--danger-bg)', border: 'var(--danger-border)', text: 'var(--danger)' };
+
   return (
-    <div style={{
-      borderRadius: 24, overflow: 'hidden', marginBottom: 16,
-      background: 'linear-gradient(160deg, rgba(20,16,50,0.9) 0%, rgba(14,11,36,0.95) 100%)',
-      border: '1px solid rgba(124,90,246,0.15)',
-      boxShadow: '0 4px 8px rgba(0,0,0,0.6), 0 16px 48px rgba(0,0,0,0.5)',
-    }}>
-      <div style={{
-        padding: '14px 20px',
-        borderBottom: '1px solid rgba(124,90,246,0.08)',
-        background: 'linear-gradient(180deg, rgba(124,90,246,0.06) 0%, transparent 100%)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      }}>
-        <div>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(167,139,248,0.55)', marginBottom: 2 }}>Daily log</p>
-          <p style={{ fontSize: 15, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em' }}>
-            {existing ? 'Today logged ✓' : 'Log sleep & food'}
-          </p>
+    <div className="glass-card" style={{ padding: '20px', marginTop: 12 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 32, height: 32,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: 8,
+            background: 'rgba(255, 107, 53, 0.12)', border: '1px solid rgba(255, 107, 53, 0.25)',
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--warm)" strokeWidth="2" strokeLinecap="round">
+              <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+            </svg>
+          </div>
+          <div>
+            <p style={{
+              fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700,
+              letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text)',
+            }}>Daily Log</p>
+            {existing && (
+              <p style={{ fontSize: 11, color: 'var(--accent-light)', marginTop: 1 }}>Today logged</p>
+            )}
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {saved && <span style={{ fontSize: 12, fontWeight: 600, color: '#a78bf8' }}>Saved ✓</span>}
-          <Link
-            href="/daily-log"
-            style={{
-              padding: '6px 12px', borderRadius: 99, fontSize: 11, fontWeight: 700,
-              background: 'rgba(124,90,246,0.1)', border: '1px solid rgba(124,90,246,0.22)',
-              color: '#a78bf8', textDecoration: 'none', transition: 'background 150ms ease',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(124,90,246,0.2)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(124,90,246,0.1)')}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {saved && (
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--accent-light)' }}>
+              Saved ✓
+            </span>
+          )}
+          <Link href="/daily-log" style={{
+            fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 700,
+            letterSpacing: '0.07em', textTransform: 'uppercase',
+            color: 'var(--text-2)', textDecoration: 'none',
+            padding: '5px 10px', borderRadius: 6,
+            border: '1px solid rgba(240,112,48,0.2)',
+            transition: 'all 140ms ease',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.color = 'var(--accent-light)';
+            (e.currentTarget as HTMLElement).style.borderColor = 'rgba(240,112,48,0.4)';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.color = 'var(--text-2)';
+            (e.currentTarget as HTMLElement).style.borderColor = 'rgba(240,112,48,0.2)';
+          }}
           >
             Full log →
           </Link>
         </div>
       </div>
 
-      <div style={{ padding: '16px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {/* Sleep row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Sleep + Pre-climb */}
+        <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 10 }}>
           <div>
-            <label style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(167,139,248,0.5)', display: 'block', marginBottom: 4 }}>Sleep</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <label style={{
+              display: 'block', fontFamily: 'var(--font-display)',
+              fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+              color: 'var(--text-3)', marginBottom: 5,
+            }}>Sleep</label>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
               <input
                 type="number" inputMode="decimal" min="0" max="24" step="0.5"
                 value={sleepHours} onChange={e => setSleepHours(e.target.value)} placeholder="—"
                 style={{
-                  width: 62, padding: '8px 10px', borderRadius: 12,
-                  fontSize: 20, fontWeight: 800, letterSpacing: '-0.03em', textAlign: 'center',
-                  color: '#ffffff', background: 'rgba(124,90,246,0.07)',
-                  border: '1px solid rgba(124,90,246,0.14)', outline: 'none', transition: 'border-color 150ms ease',
+                  width: '100%', padding: '9px 6px', borderRadius: 8,
+                  background: 'rgba(255, 255, 255, 0.7)', border: '1px solid rgba(240,112,48,0.18)',
+                  fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 500,
+                  color: 'var(--text)', outline: 'none', textAlign: 'center',
+                  transition: 'border-color 140ms ease',
                 }}
-                onFocus={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.5)')}
-                onBlur={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.14)')}
+                onFocus={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'rgba(240,112,48,0.18)')}
               />
-              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.22)', fontWeight: 600 }}>hrs</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>hr</span>
             </div>
           </div>
-          <div style={{ flex: 1 }}>
-            <QuickMealInput label="Pre-climb (within 1hr)" value={preClimb} onChange={setPreClimb} placeholder="banana, energy bar…" />
-          </div>
+          <MealInput label="Pre-climb" value={preClimb} onChange={setPreClimb} placeholder="banana, bar…" accent />
         </div>
 
-        {/* Meals grid */}
+        {/* Meals */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <QuickMealInput label="Breakfast" value={breakfast} onChange={setBreakfast} placeholder="oats, eggs…" />
-          <QuickMealInput label="Lunch" value={lunch} onChange={setLunch} placeholder="chicken, rice…" />
-          <QuickMealInput label="Dinner" value={dinner} onChange={setDinner} placeholder="pasta, fish…" />
+          <MealInput label="Breakfast" value={breakfast} onChange={setBreakfast} placeholder="oats, eggs…" />
+          <MealInput label="Lunch" value={lunch} onChange={setLunch} placeholder="chicken, rice…" />
+          <MealInput label="Dinner" value={dinner} onChange={setDinner} placeholder="pasta, fish…" />
         </div>
 
-        {/* Climbing strength */}
+        {/* Climb strength */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <label style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(167,139,248,0.5)' }}>
-              Climbing strength
-            </label>
+            <label style={{
+              fontFamily: 'var(--font-display)', fontSize: 9, fontWeight: 700,
+              letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-3)',
+            }}>Climb strength</label>
             {climbStrength != null ? (
-              <button onClick={() => setClimbStrength(null)} style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                clear
-              </button>
+              <button onClick={() => setClimbStrength(null)} style={{
+                fontFamily: 'var(--font-display)', fontSize: 9, fontWeight: 700,
+                letterSpacing: '0.06em', textTransform: 'uppercase',
+                color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+              }}>Clear</button>
             ) : (
-              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>optional</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-3)' }}>optional</span>
             )}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 4 }}>
             {[1,2,3,4,5,6,7,8,9,10].map(n => {
-              const col = n >= 7 ? '#a78bf8' : n >= 4 ? '#fb923c' : '#f87171';
+              const c = strengthColor(n);
               const sel = climbStrength === n;
               return (
                 <button
                   key={n}
                   onClick={() => setClimbStrength(sel ? null : n)}
                   style={{
-                    padding: '7px 0', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                    background: sel ? `${col}22` : 'rgba(255,255,255,0.03)',
-                    border: sel ? `1px solid ${col}66` : '1px solid rgba(255,255,255,0.06)',
-                    color: sel ? col : 'rgba(255,255,255,0.22)',
+                    padding: '7px 0', borderRadius: 6,
+                    fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: sel ? 600 : 400,
+                    background: sel ? c.bg : 'rgba(255,255,255,0.5)',
+                    border: sel ? `1.5px solid ${c.border}` : '1px solid rgba(240,112,48,0.15)',
+                    color: sel ? c.text : 'var(--text-3)',
                     cursor: 'pointer', transition: 'all 120ms ease', touchAction: 'manipulation',
+                    boxShadow: sel ? `0 0 8px ${c.border}` : 'none',
                   }}
-                  onMouseEnter={e => { if (!sel) { (e.currentTarget as HTMLElement).style.background = `${col}18`; (e.currentTarget as HTMLElement).style.color = col; } }}
-                  onMouseLeave={e => { if (!sel) { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.22)'; } }}
+                  onMouseEnter={e => {
+                    if (!sel) {
+                      (e.currentTarget as HTMLElement).style.borderColor = 'rgba(240,112,48,0.35)';
+                      (e.currentTarget as HTMLElement).style.color = 'var(--text-2)';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (!sel) {
+                      (e.currentTarget as HTMLElement).style.borderColor = 'rgba(240,112,48,0.15)';
+                      (e.currentTarget as HTMLElement).style.color = 'var(--text-3)';
+                    }
+                  }}
                 >
                   {n}
                 </button>
@@ -537,17 +586,24 @@ function WellnessQuickLog({ userId, existing }: { userId?: string; existing: Wel
           </div>
         </div>
 
+        {/* Save */}
         <button
           onClick={save}
           disabled={saving || !hasDirty}
           style={{
-            padding: '12px', borderRadius: 99, fontSize: 13, fontWeight: 700,
-            color: '#ffffff', border: 'none', cursor: 'pointer',
-            background: 'linear-gradient(135deg, #7c5af6 0%, #6646e0 100%)',
-            opacity: saving || !hasDirty ? 0.4 : 1, transition: 'opacity 150ms ease',
+            padding: '12px', borderRadius: 10,
+            background: saving || !hasDirty
+              ? 'rgba(240,112,48,0.1)'
+              : 'linear-gradient(135deg, #F07030 0%, #F59050 100%)',
+            border: 'none', cursor: saving || !hasDirty ? 'not-allowed' : 'pointer',
+            fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700,
+            letterSpacing: '0.1em', textTransform: 'uppercase',
+            color: saving || !hasDirty ? 'var(--text-3)' : 'white',
+            boxShadow: saving || !hasDirty ? 'none' : '0 0 20px rgba(240,112,48,0.35)',
+            transition: 'all 160ms ease',
           }}
           onMouseEnter={e => { if (!saving && hasDirty) (e.currentTarget as HTMLElement).style.opacity = '0.85'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = saving || !hasDirty ? '0.4' : '1'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
         >
           {saving ? 'Saving…' : 'Save'}
         </button>
@@ -556,18 +612,259 @@ function WellnessQuickLog({ userId, existing }: { userId?: string; existing: Wel
   );
 }
 
-export default function DashboardView({ profile, plan, todaySessionId, loggedExerciseIds = [], userId, totalDaysLogged = 0, todayWellness = null }: Props & { userId?: string; totalDaysLogged?: number }) {
-  const displayName = profile?.name ?? profile?.username ?? 'there';
+const MEAL_SLOTS = [
+  { key: 'breakfast_nutrition' as const, foodKey: 'food_breakfast' as const, label: 'Breakfast' },
+  { key: 'lunch_nutrition' as const,     foodKey: 'food_lunch' as const,     label: 'Lunch' },
+  { key: 'dinner_nutrition' as const,    foodKey: 'food_dinner' as const,    label: 'Dinner' },
+  { key: 'pre_climb_nutrition' as const, foodKey: 'food_pre_climb' as const, label: 'Pre-climb' },
+];
 
-  // Compute day-of-week client-side to respect user's local timezone
+function QuickPhotoLog({ userId, todayWellness, onLogged }: {
+  userId?: string;
+  todayWellness: WellnessLog | null;
+  onLogged: (slot: string, nutrition: NutritionData) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<typeof MEAL_SLOTS[number] | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [result, setResult] = useState<NutritionData | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const supabase = createClient();
+
+  function pickSlot(slot: typeof MEAL_SLOTS[number]) {
+    setSelectedSlot(slot);
+    setResult(null);
+    setTimeout(() => fileRef.current?.click(), 50);
+  }
+
+  async function handleFile(file: File) {
+    if (!selectedSlot || !userId) return;
+    setAnalyzing(true);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const dataUrl = e.target?.result as string;
+      const [header, base64] = dataUrl.split(',');
+      const mimeType = header.match(/:(.*?);/)?.[1] ?? 'image/jpeg';
+      try {
+        const res = await fetch('/api/analyze-meal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: base64, mimeType }),
+        });
+        if (res.ok) {
+          const nutrition: NutritionData = await res.json();
+          const today = new Date();
+          const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+          await supabase.from('wellness_logs').upsert({
+            user_id: userId, date: dateStr,
+            [selectedSlot.foodKey]: nutrition.description,
+            [selectedSlot.key]: nutrition,
+          }, { onConflict: 'user_id,date' });
+          setResult(nutrition);
+          onLogged(selectedSlot.key, nutrition);
+        }
+      } catch { /* ignore */ }
+      setAnalyzing(false);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  if (!userId) return null;
+
+  return (
+    <>
+      <button
+        onClick={() => { setOpen(true); setResult(null); setSelectedSlot(null); }}
+        title="Log a meal with photo"
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          padding: '13px 20px', borderRadius: 10,
+          background: 'linear-gradient(135deg, #F07030 0%, #F59050 100%)',
+          border: 'none', color: 'white', cursor: 'pointer',
+          fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700,
+          letterSpacing: '0.08em', textTransform: 'uppercase',
+          boxShadow: '0 0 18px rgba(240,112,48,0.35)',
+          transition: 'opacity 140ms ease',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.85'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        Log meal with photo
+      </button>
+
+      <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-end">
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => { if (!analyzing) setOpen(false); }} />
+          <div className="anim-slide-up relative w-full" style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)', borderRadius: '20px 20px 0 0', padding: '24px 20px 48px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+              <div style={{ width: 36, height: 3, background: 'rgba(240,112,48,0.3)', borderRadius: 2 }} />
+            </div>
+
+            {result ? (
+              <div>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text)', marginBottom: 4 }}>
+                  Logged ✓
+                </p>
+                <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 20 }}>{result.description}</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 20 }}>
+                  {[
+                    { label: 'Cal', value: Math.round(result.calories), color: 'var(--accent)' },
+                    { label: 'Pro', value: `${Math.round(result.protein)}g`, color: 'var(--blue)' },
+                    { label: 'Carb', value: `${Math.round(result.carbs)}g`, color: 'var(--warm)' },
+                    { label: 'Fat', value: `${Math.round(result.fat)}g`, color: 'var(--text-2)' },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} style={{ textAlign: 'center', padding: '10px', background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 700, color, lineHeight: 1 }}>{value}</p>
+                      <p style={{ fontFamily: 'var(--font-display)', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-3)', marginTop: 4 }}>{label}</p>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={() => setOpen(false)} style={{ width: '100%', padding: '13px', background: 'linear-gradient(135deg, #F07030 0%, #F59050 100%)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'white', borderRadius: 10, boxShadow: '0 0 20px rgba(240,112,48,0.35)' }}>
+                  Done
+                </button>
+              </div>
+            ) : analyzing ? (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text)', marginBottom: 8 }}>Analyzing…</p>
+                <p style={{ fontSize: 13, color: 'var(--text-3)' }}>Claude is identifying your meal</p>
+              </div>
+            ) : (
+              <div>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text)', marginBottom: 4 }}>Which meal?</p>
+                <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 20 }}>Select a slot, then take or choose a photo.</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {MEAL_SLOTS.map(slot => {
+                    const alreadyLogged = todayWellness?.[slot.key] != null;
+                    return (
+                      <button key={slot.key} onClick={() => pickSlot(slot)} style={{
+                        padding: '16px', textAlign: 'left', cursor: 'pointer',
+                        background: alreadyLogged ? 'var(--accent-bg)' : 'var(--surface-2)',
+                        border: `1px solid ${alreadyLogged ? 'var(--accent-border)' : 'var(--border)'}`,
+                        borderRadius: 10, transition: 'all 140ms ease',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-2)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = alreadyLogged ? 'var(--accent-border)' : 'var(--border)'; }}
+                      >
+                        <p style={{ fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: alreadyLogged ? 'var(--accent)' : 'var(--text)', marginBottom: 2 }}>{slot.label}</p>
+                        {alreadyLogged
+                          ? <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--accent)' }}>update ↺</p>
+                          : <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-3)' }}>not logged</p>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function Ring({ value, goal, color, label, unit, size = 88 }: {
+  value: number; goal: number; color: string; label: string; unit: string; size?: number;
+}) {
+  const r = (size - 12) / 2;
+  const circ = 2 * Math.PI * r;
+  const pct = goal > 0 ? Math.min(value / goal, 1) : 0;
+  const over = goal > 0 && value > goal;
+  const strokeColor = over ? 'var(--danger)' : color;
+  const offset = circ * (1 - pct);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+      <div style={{ position: 'relative', width: size, height: size }}>
+        <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--border)" strokeWidth={7} />
+          <circle
+            cx={size/2} cy={size/2} r={r} fill="none"
+            stroke={strokeColor} strokeWidth={7}
+            strokeLinecap="round"
+            strokeDasharray={circ}
+            strokeDashoffset={offset}
+            style={{ transition: 'stroke-dashoffset 600ms ease, stroke 300ms ease' }}
+          />
+        </svg>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: size > 80 ? 16 : 13, fontWeight: 700, color: over ? 'var(--danger)' : 'var(--text)', lineHeight: 1 }}>
+            {value >= 1000 ? `${(value/1000).toFixed(1)}k` : Math.round(value)}
+          </span>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 8, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-3)', marginTop: 2 }}>{unit}</span>
+        </div>
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        <p style={{ fontFamily: 'var(--font-display)', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-2)' }}>{label}</p>
+        {goal > 0 && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-3)', marginTop: 1 }}>/ {goal >= 1000 ? `${(goal/1000).toFixed(1)}k` : goal}{unit}</p>}
+      </div>
+    </div>
+  );
+}
+
+function NutritionRingsCard({ todayWellness, calorieGoal, proteinGoal, userId, onLogged }: {
+  todayWellness: WellnessLog | null;
+  calorieGoal: number;
+  proteinGoal: number;
+  userId?: string;
+  onLogged: (slot: string, nutrition: NutritionData) => void;
+}) {
+  let totalCal = 0, totalPro = 0, totalCarb = 0, totalFat = 0;
+  if (todayWellness) {
+    for (const slot of MEAL_SLOTS) {
+      const n = todayWellness[slot.key];
+      if (n) { totalCal += n.calories; totalPro += n.protein; totalCarb += n.carbs; totalFat += n.fat; }
+    }
+  }
+
+  return (
+    <div className="anim-fade-up-1 glass-card" style={{ padding: '18px 20px', marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <p style={{ fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text)' }}>Nutrition Today</p>
+        <Link href="/nutrition" style={{ fontFamily: 'var(--font-display)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-3)', textDecoration: 'none', transition: 'color 140ms ease' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'; }}
+        >
+          Details →
+        </Link>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', marginBottom: 16 }}>
+        <Ring value={totalCal} goal={calorieGoal} color="#F07030" label="Calories" unit="kcal" size={96} />
+        <Ring value={totalPro} goal={proteinGoal} color="var(--blue)" label="Protein" unit="g" size={96} />
+        <Ring value={totalCarb} goal={0} color="var(--warm)" label="Carbs" unit="g" size={72} />
+        <Ring value={totalFat} goal={0} color="var(--text-2)" label="Fat" unit="g" size={72} />
+      </div>
+
+      <QuickPhotoLog userId={userId} todayWellness={todayWellness} onLogged={onLogged} />
+    </div>
+  );
+}
+
+/* ── Main dashboard ── */
+export default function DashboardView({ profile, plan, todaySessionId, loggedExerciseIds = [], userId, totalDaysLogged = 0, todayWellness = null, calorieGoal = 2000, proteinGoal = 150 }: Props) {
+  const displayName = profile?.name ?? profile?.username ?? 'Athlete';
+
   const [dayOfWeek, setDayOfWeek] = useState<number>(-1);
   const [todaysPlanDay, setTodaysPlanDay] = useState<PlanDayItem | null>(null);
+  const [formattedDate, setFormattedDate] = useState('');
+  const [motivationText, setMotivationText] = useState('');
 
   useEffect(() => {
-    const d = (new Date().getDay() + 6) % 7; // Mon=0 … Sun=6
+    const now = new Date();
+    const d = (now.getDay() + 6) % 7;
     setDayOfWeek(d);
     const found = plan?.plan_days?.find(pd => pd.day_of_week === d) ?? null;
     setTodaysPlanDay(found);
+    setFormattedDate(now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }));
+    const h = now.getHours();
+    setMotivationText(MOTIVATIONAL[(now.getDay() * 3 + Math.floor(h / 8)) % MOTIVATIONAL.length]);
   }, [plan]);
 
   const exercises = todaysPlanDay?.plan_exercises ?? [];
@@ -575,200 +872,207 @@ export default function DashboardView({ profile, plan, todaySessionId, loggedExe
   const [activeLog, setActiveLog] = useState<PlanExerciseItem | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(todaySessionId);
   const [loggedIds, setLoggedIds] = useState<Set<string>>(new Set(loggedExerciseIds));
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const doneCount = exercises.filter(pe => loggedIds.has(pe.exercises.id)).length;
   const allDone = exercises.length > 0 && doneCount === exercises.length;
 
+  const [todayWellnessState, setTodayWellnessState] = useState<WellnessLog | null>(todayWellness);
   const [showFatigueModal, setShowFatigueModal] = useState(false);
   const prevLoggedSize = useRef(loggedExerciseIds.length);
+
   useEffect(() => {
     const cur = loggedIds.size;
     const prev = prevLoggedSize.current;
     prevLoggedSize.current = cur;
     if (cur > prev && exercises.length > 0 && cur === exercises.length && sessionId) {
-      setShowFatigueModal(true);
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 1200);
+      setTimeout(() => setShowFatigueModal(true), 600);
     }
   }, [loggedIds]);
 
+  const pct = exercises.length > 0 ? doneCount / exercises.length : 0;
+
   return (
-    <div style={{ minHeight: '100dvh', padding: '0 20px 48px' }}>
+    <div style={{ minHeight: '100dvh', padding: '0 16px 56px' }}>
 
-      {/* Hero */}
-      <div className="anim-fade-up" style={{ paddingTop: 72, paddingBottom: 32 }}>
+      {/* ── Hero ── */}
+      <div className="anim-fade-up" style={{ paddingTop: 52, paddingBottom: 32 }}>
+        <p style={{
+          fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-3)',
+          letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 10,
+        }}>
+          {formattedDate || '—'}
+        </p>
 
-        {/* Date + greeting row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-          <div style={{
-            height: 1, flex: 1,
-            background: 'linear-gradient(90deg, transparent, rgba(124,90,246,0.25))',
-          }} />
-          <p style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-            color: 'rgba(167,139,248,0.55)',
-          }}>
-            {formatDate()}
-          </p>
-          <div style={{
-            height: 1, flex: 1,
-            background: 'linear-gradient(90deg, rgba(124,90,246,0.25), transparent)',
-          }} />
-        </div>
+        {/* Name + gradient text */}
+        <h1 style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: 'clamp(52px, 13vw, 82px)',
+          fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase',
+          lineHeight: 0.92, marginBottom: 18,
+          background: 'linear-gradient(135deg, #16141F 0%, #F59050 55%, #F07030 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+        }}>
+          {displayName}
+        </h1>
 
-        {/* Greeting + name + ring */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
-          <div style={{ flex: 1 }}>
-            {totalDaysLogged > 0 && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a78bf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
-                <p style={{ fontSize: 13, fontWeight: 600, color: 'rgba(167,139,248,0.8)', letterSpacing: '0.01em' }}>
-                  {totalDaysLogged} days logged
-                </p>
-              </div>
-            )}
-            <h1 style={{
-              fontSize: 'clamp(38px, 8vw, 56px)',
-              fontWeight: 800,
-              color: '#ffffff',
-              letterSpacing: '-0.04em',
-              lineHeight: 1,
+        {/* Stats row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          {totalDaysLogged > 0 && (
+            <span style={{
+              fontFamily: 'var(--font-mono)', fontSize: 11,
+              color: 'var(--text-3)',
+              padding: '4px 10px', borderRadius: 6,
+              background: 'rgba(240,112,48,0.08)',
+              border: '1px solid rgba(240,112,48,0.18)',
             }}>
-              {displayName}
-            </h1>
-          </div>
-
-          {exercises.length > 0 && !isRest && (
-            <ProgressRing done={doneCount} total={exercises.length} />
+              {totalDaysLogged} sessions
+            </span>
+          )}
+          {motivationText && (
+            <span style={{ fontSize: 12, color: 'var(--text-3)', fontStyle: 'italic' }}>
+              {motivationText}
+            </span>
           )}
         </div>
-
-        {/* Exercise status badge */}
-        {exercises.length > 0 && !isRest && (
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            padding: '7px 14px', borderRadius: 99, marginBottom: 18,
-            background: allDone ? 'rgba(124,90,246,0.14)' : 'rgba(255,255,255,0.05)',
-            border: allDone ? '1px solid rgba(124,90,246,0.3)' : '1px solid rgba(255,255,255,0.08)',
-            boxShadow: allDone ? '0 0 16px rgba(124,90,246,0.2)' : 'none',
-          }}>
-            <span style={{ fontSize: 13 }}>{allDone ? '✦' : '○'}</span>
-            <p style={{
-              fontSize: 13, fontWeight: 600, letterSpacing: '-0.01em',
-              color: allDone ? '#c4b5fd' : 'rgba(255,255,255,0.5)',
-            }}>
-              {allDone
-                ? 'All done — great session'
-                : `${exercises.length - doneCount} exercise${exercises.length - doneCount !== 1 ? 's' : ''} remaining`}
-            </p>
-          </div>
-        )}
-
-        {/* Motivational line */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: 10, padding: '10px 0',
-        }}>
-          <div style={{ height: 1, flex: 1, background: 'linear-gradient(90deg, transparent, rgba(124,90,246,0.15))' }} />
-          <p style={{
-            fontSize: 12, fontStyle: 'italic', letterSpacing: '0.01em',
-            color: 'rgba(167,139,248,0.5)', textAlign: 'center',
-            maxWidth: 220, lineHeight: 1.6,
-          }}>
-            &ldquo;{getMotivation()}&rdquo;
-          </p>
-          <div style={{ height: 1, flex: 1, background: 'linear-gradient(90deg, rgba(124,90,246,0.15), transparent)' }} />
-        </div>
-
       </div>
 
-      {/* Workout card */}
-      <div
-        className="anim-fade-up-2"
-        style={{
-          borderRadius: 24,
-          overflow: 'hidden',
-          marginBottom: 16,
-          background: 'linear-gradient(160deg, rgba(20,16,50,0.9) 0%, rgba(14,11,36,0.95) 100%)',
-          border: '1px solid rgba(124,90,246,0.15)',
-          boxShadow: '0 4px 8px rgba(0,0,0,0.6), 0 16px 48px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)',
+      {/* ── Nutrition rings ── */}
+      <NutritionRingsCard
+        todayWellness={todayWellnessState}
+        calorieGoal={calorieGoal}
+        proteinGoal={proteinGoal}
+        userId={userId}
+        onLogged={(slotKey, nutrition) => {
+          setTodayWellnessState(prev => ({ ...(prev ?? { id: '', sleep_hours: null, food_breakfast: null, food_lunch: null, food_dinner: null, food_pre_climb: null, climb_strength: null }), [slotKey]: nutrition } as WellnessLog));
         }}
-      >
-        {/* Card header */}
+      />
+
+      {/* ── Today's workout card ── */}
+      <div className="anim-fade-up-2 glass-card" style={{ padding: '20px 0 8px', marginBottom: 0, position: 'relative', overflow: 'hidden' }}>
+        {/* Confetti anchor */}
+        <Confetti active={showConfetti} />
+
+        {/* Header row */}
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '18px 20px',
-          borderBottom: exercises.length > 0 && !isRest ? '1px solid rgba(124,90,246,0.08)' : 'none',
-          background: 'linear-gradient(180deg, rgba(124,90,246,0.06) 0%, transparent 100%)',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+          padding: '0 20px 16px',
+          borderBottom: '1px solid rgba(240,112,48,0.08)',
         }}>
           <div>
             <p style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
-              textTransform: 'uppercase', marginBottom: 4,
-              color: 'rgba(167,139,248,0.55)',
+              fontFamily: 'var(--font-display)', fontSize: 10, fontWeight: 700,
+              letterSpacing: '0.12em', textTransform: 'uppercase',
+              color: 'var(--text-3)', marginBottom: 4,
             }}>
               {dayOfWeek >= 0 ? DAY_NAMES[dayOfWeek] : '—'}
             </p>
-            <p style={{ fontSize: 16, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em' }}>
-              {!plan ? 'Get started' : isRest ? 'Rest Day' : exercises.length > 0 ? plan.name : 'No workout scheduled'}
+            <p style={{
+              fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700,
+              letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--text)',
+            }}>
+              {!plan ? 'Get Started'
+                : isRest ? 'Rest Day'
+                : exercises.length > 0 ? plan.name
+                : 'No Workout'}
             </p>
           </div>
 
           {exercises.length > 0 && !isRest && (
-            <div style={{
-              padding: '6px 12px', borderRadius: 99,
-              fontSize: 12, fontWeight: 700,
-              background: allDone ? 'rgba(124,90,246,0.18)' : 'rgba(255,255,255,0.05)',
-              color: allDone ? '#a78bf8' : 'rgba(255,255,255,0.45)',
-              border: allDone ? '1px solid rgba(124,90,246,0.35)' : '1px solid rgba(255,255,255,0.08)',
-              boxShadow: allDone ? '0 0 16px rgba(124,90,246,0.3)' : 'none',
-              transition: 'all 300ms ease',
-            }}>
-              {doneCount}/{exercises.length}
+            <div style={{ textAlign: 'right' }}>
+              <span style={{
+                fontFamily: 'var(--font-mono)', fontSize: 28, fontWeight: 600,
+                color: allDone ? 'var(--accent-light)' : 'var(--text-3)',
+                letterSpacing: '-0.02em', lineHeight: 1,
+                textShadow: allDone ? '0 0 20px rgba(240,112,48,0.6)' : 'none',
+                transition: 'all 280ms ease',
+              }}>
+                {doneCount}<span style={{ fontSize: 14, opacity: 0.7 }}>/{exercises.length}</span>
+              </span>
             </div>
           )}
         </div>
 
-        {/* Card content */}
-        {!plan ? <EmptyPlan />
-          : isRest ? <RestDay />
-          : exercises.length === 0 ? (
-            <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)' }}>No exercises planned for today.</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12 }}>
-              {exercises.map((pe, i) => (
-                <ExerciseRow
-                  key={pe.id}
-                  name={pe.exercises.name}
-                  type={pe.exercises.type}
-                  sets={pe.sets}
-                  reps={pe.reps}
-                  weight={pe.weight}
-                  holdTime={pe.hold_time}
-                  index={i}
-                  done={loggedIds.has(pe.exercises.id)}
-                  onDone={() => setLoggedIds(prev => {
-                    const next = new Set(prev);
-                    next.has(pe.exercises.id) ? next.delete(pe.exercises.id) : next.add(pe.exercises.id);
-                    return next;
-                  })}
-                  onLog={() => setActiveLog(pe)}
-                />
-              ))}
-            </div>
-          )}
+        {/* Progress bar */}
+        {exercises.length > 0 && !isRest && (
+          <div style={{ height: 3, background: 'rgba(240,112,48,0.12)', margin: '0 0 2px' }}>
+            <div style={{
+              height: '100%',
+              background: allDone
+                ? 'linear-gradient(90deg, #F07030, #F59050, #F07030)'
+                : 'linear-gradient(90deg, #F07030, #F59050)',
+              width: `${pct * 100}%`,
+              boxShadow: allDone ? '0 0 16px rgba(240,112,48,0.8)' : '0 0 8px rgba(240,112,48,0.4)',
+              transition: 'width 480ms cubic-bezier(0.34,1.56,0.64,1), background 300ms ease, box-shadow 300ms ease',
+            }} />
+          </div>
+        )}
+
+        {/* Exercise list */}
+        {!plan ? (
+          <div style={{ padding: '0 20px' }}><EmptyPlan /></div>
+        ) : isRest ? (
+          <div style={{ padding: '0 20px' }}><RestDay /></div>
+        ) : exercises.length === 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--text-3)', padding: '24px 20px' }}>No exercises planned for today.</p>
+        ) : (
+          <div>
+            {exercises.map((pe, i) => (
+              <ExerciseRow
+                key={pe.id}
+                name={pe.exercises.name}
+                type={pe.exercises.type}
+                sets={pe.sets}
+                reps={pe.reps}
+                weight={pe.weight}
+                holdTime={pe.hold_time}
+                index={i}
+                done={loggedIds.has(pe.exercises.id)}
+                onDone={() => setLoggedIds(prev => {
+                  const next = new Set(prev);
+                  next.has(pe.exercises.id) ? next.delete(pe.exercises.id) : next.add(pe.exercises.id);
+                  return next;
+                })}
+                onLog={() => setActiveLog(pe)}
+              />
+            ))}
+            {allDone && (
+              <div
+                className="anim-completion"
+                style={{
+                  margin: '0 16px 16px',
+                  padding: '14px 20px', borderRadius: 12,
+                  background: 'linear-gradient(135deg, rgba(240,112,48,0.18) 0%, rgba(168,124,255,0.1) 100%)',
+                  border: '1px solid rgba(240,112,48,0.35)',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  boxShadow: '0 0 30px rgba(240,112,48,0.2)',
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" strokeWidth="2.5" strokeLinecap="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <p style={{
+                  fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700,
+                  letterSpacing: '0.08em', textTransform: 'uppercase',
+                  color: 'var(--accent-light)',
+                }}>
+                  Session complete
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
+
+      {/* ── Modals ── */}
       {showFatigueModal && sessionId && (
         <FatigueModal sessionId={sessionId} onDone={() => setShowFatigueModal(false)} />
       )}
-
       {activeLog && userId && (
         <LogSheet
           pe={activeLog}
@@ -779,55 +1083,6 @@ export default function DashboardView({ profile, plan, todaySessionId, loggedExe
           onLogged={id => setLoggedIds(prev => new Set(prev).add(id))}
         />
       )}
-
-      {/* Wellness quick log */}
-      <WellnessQuickLog userId={userId} existing={todayWellness} />
-
-      {/* Quick links */}
-      <div className="anim-fade-up-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        {[
-          { href: '/progress', label: 'Progress', sub: 'Charts & PRs', icon: (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-            </svg>
-          )},
-          { href: '/skills', label: 'Skills', sub: 'Skill tracker', icon: (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="8" r="6" /><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11" />
-            </svg>
-          )},
-        ].map(({ href, label, sub, icon }) => (
-          <Link
-            key={href}
-            href={href}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '16px',
-              borderRadius: 20,
-              background: 'rgba(124,90,246,0.05)',
-              border: '1px solid rgba(124,90,246,0.1)',
-              textDecoration: 'none',
-              transition: 'background 150ms ease, border-color 150ms ease, box-shadow 150ms ease',
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(124,90,246,0.1)';
-              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(124,90,246,0.22)';
-              (e.currentTarget as HTMLElement).style.boxShadow = '0 0 20px rgba(124,90,246,0.12)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(124,90,246,0.05)';
-              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(124,90,246,0.1)';
-              (e.currentTarget as HTMLElement).style.boxShadow = 'none';
-            }}
-          >
-            <div style={{ color: 'rgba(167,139,248,0.6)' }}>{icon}</div>
-            <div>
-              <p style={{ fontSize: 14, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em' }}>{label}</p>
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{sub}</p>
-            </div>
-          </Link>
-        ))}
-      </div>
     </div>
   );
 }

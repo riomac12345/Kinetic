@@ -9,7 +9,7 @@ export default async function DailyLogPage() {
 
   const { data: logs } = await supabase
     .from('wellness_logs')
-    .select('id, date, sleep_hours, food_breakfast, food_lunch, food_dinner, food_pre_climb, climb_strength')
+    .select('id, date, sleep_hours, food_breakfast, food_lunch, food_dinner, food_pre_climb, climb_strength, breakfast_nutrition, lunch_nutrition, dinner_nutrition, pre_climb_nutrition')
     .eq('user_id', user.id)
     .order('date', { ascending: false })
     .limit(365);

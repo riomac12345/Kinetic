@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
+const FEEL_LABELS = ['', 'Tired', 'Okay', 'Good', 'Strong', 'On fire'];
+
 export default async function FeedPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -24,88 +26,71 @@ export default async function FeedPage() {
       ).data ?? []
     : [];
 
-  const FEEL_EMOJI = ['', '😴', '😐', '🙂', '💪', '🔥'];
-
   return (
-    <div className="min-h-dvh px-4 pt-20 pb-10">
-      <div className="anim-fade-up mb-6">
-        <p className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: 'rgba(167,139,248,0.65)' }}>Feed</p>
-        <h1 className="text-2xl font-bold text-white" style={{ letterSpacing: '-0.03em' }}>Activity</h1>
+    <div style={{ minHeight: '100dvh', padding: '0 20px 48px' }}>
+      <div className="anim-fade-up" style={{ paddingTop: 52, paddingBottom: 24, borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
+        <p style={{ fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 8 }}>Feed</p>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(48px, 12vw, 72px)', fontWeight: 800, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--text)', lineHeight: 0.95 }}>
+          Activity
+        </h1>
       </div>
 
       {followingIds.length === 0 ? (
-        <div className="anim-fade-up-1 flex flex-col items-center py-20 text-center">
-          <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 anim-float"
-            style={{ background: 'rgba(124,90,246,0.1)', border: '1px solid rgba(124,90,246,0.2)', boxShadow: '0 0 20px rgba(124,90,246,0.15)' }}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bf8" strokeWidth="1.75" strokeLinecap="round">
+        <div className="anim-fade-up-1" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '64px 0', textAlign: 'center' }}>
+          <div style={{ width: 48, height: 48, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="1.75" strokeLinecap="round">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
               <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
           </div>
-          <p className="text-sm font-semibold text-white mb-1">Follow athletes to see their activity</p>
-          <p className="text-xs mb-5" style={{ color: 'rgba(255,255,255,0.38)' }}>Search for people to follow.</p>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text)', marginBottom: 6 }}>No one followed yet</p>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-3)', marginBottom: 20 }}>Follow athletes to see their activity here.</p>
           <Link
             href="/search"
-            className="anim-glow px-5 py-2.5 rounded-full text-sm font-semibold text-white"
-            style={{ background: 'linear-gradient(135deg, #7c5af6 0%, #6646e0 100%)' }}
+            style={{
+              display: 'inline-block', padding: '11px 24px',
+              background: 'var(--accent)', textDecoration: 'none',
+              fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--bg)',
+            }}
           >
-            Find people
+            Find People
           </Link>
         </div>
       ) : sessions.length === 0 ? (
-        <p className="text-sm text-center py-16" style={{ color: 'rgba(255,255,255,0.35)' }}>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-3)', textAlign: 'center', padding: '48px 0' }}>
           No recent activity from people you follow.
         </p>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div>
           {(sessions as any[]).map((s: { id: string; date: string; feel: number | null; notes: string | null; session_exercises: { id: string }[]; profiles: { username: string; name: string | null; avatar_url: string | null } | null }, i: number) => {
             const profile = s.profiles;
             return (
-              <div
-                key={s.id}
-                className="anim-fade-up rounded-2xl p-4"
-                style={{
-                  animationDelay: `${i * 0.06}s`,
-                  background: 'linear-gradient(160deg, rgba(20,16,50,0.9) 0%, rgba(14,11,36,0.95) 100%)',
-                  border: '1px solid rgba(124,90,246,0.12)',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
-                }}
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <Link href={`/profile/${profile?.username}`}>
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold"
-                      style={{
-                        background: 'rgba(124,90,246,0.1)',
-                        border: '1px solid rgba(124,90,246,0.18)',
-                        color: '#a78bf8',
-                      }}
-                    >
-                      {(profile?.name || profile?.username || '?')[0].toUpperCase()}
-                    </div>
-                  </Link>
-                  <div>
+              <div key={s.id} className="anim-fade-up" style={{ animationDelay: `${i * 0.05}s`, display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
+                <Link href={`/profile/${profile?.username}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                  <div style={{ width: 36, height: 36, background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 800, color: 'var(--accent)' }}>
+                    {(profile?.name || profile?.username || '?')[0].toUpperCase()}
+                  </div>
+                </Link>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
                     <Link href={`/profile/${profile?.username}`} style={{ textDecoration: 'none' }}>
-                      <p className="text-sm font-semibold text-white" style={{ letterSpacing: '-0.01em' }}>
-                        {profile?.name ?? profile?.username}
-                      </p>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{profile?.name ?? profile?.username}</span>
                     </Link>
-                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-3)' }}>
                       {new Date(s.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                    </p>
+                    </span>
                   </div>
-                  {s.feel && <span className="ml-auto text-lg">{FEEL_EMOJI[s.feel]}</span>}
-                </div>
-                <div className="flex items-center gap-2">
-                  <div
-                    className="px-2.5 py-1 rounded-full text-xs font-medium"
-                    style={{ background: 'rgba(124,90,246,0.1)', color: '#a78bf8', border: '1px solid rgba(124,90,246,0.18)' }}
-                  >
-                    {s.session_exercises.length} exercises
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-3)' }}>
+                      {s.session_exercises.length} exercise{s.session_exercises.length !== 1 ? 's' : ''}
+                    </span>
+                    {s.feel && (
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent)', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', padding: '1px 6px' }}>
+                        {FEEL_LABELS[s.feel]}
+                      </span>
+                    )}
+                    {s.notes && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.notes.slice(0, 36)}</span>}
                   </div>
-                  {s.notes && <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.38)' }}>{s.notes}</p>}
                 </div>
               </div>
             );

@@ -116,7 +116,7 @@ function OverallRing({ pct }: { pct: number }) {
   return (
     <div className="relative" style={{ width: 96, height: 96 }}>
       <svg className="-rotate-90" width="96" height="96" viewBox="0 0 96 96">
-        <circle cx="48" cy="48" r={r} fill="none" stroke="rgba(124,90,246,0.1)" strokeWidth="6" />
+        <circle cx="48" cy="48" r={r} fill="none" stroke="rgba(240,112,48,0.1)" strokeWidth="6" />
         <circle
           cx="48" cy="48" r={r} fill="none"
           stroke="url(#ring-grad)"
@@ -124,7 +124,7 @@ function OverallRing({ pct }: { pct: number }) {
           strokeLinecap="round"
           strokeDasharray={circ}
           strokeDashoffset={circ * (1 - pct / 100)}
-          style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.34,1.56,0.64,1)', filter: pct > 0 ? 'drop-shadow(0 0 10px rgba(124,90,246,0.7))' : 'none' }}
+          style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.34,1.56,0.64,1)', filter: pct > 0 ? 'drop-shadow(0 0 10px rgba(240,112,48,0.7))' : 'none' }}
         />
         <defs>
           <linearGradient id="ring-grad" x1="0" y1="0" x2="1" y2="0">
@@ -156,15 +156,15 @@ function SkillCard({
       className="rounded-2xl overflow-hidden"
       style={{
         background: 'linear-gradient(160deg, rgba(20,16,50,0.9) 0%, rgba(14,11,36,0.95) 100%)',
-        border: isMax ? '1px solid rgba(167,139,248,0.25)' : '1px solid rgba(124,90,246,0.13)',
-        boxShadow: isMax ? '0 0 24px rgba(124,90,246,0.12)' : '0 2px 8px rgba(0,0,0,0.5)',
+        border: isMax ? '1px solid rgba(249,163,112,0.25)' : '1px solid rgba(240,112,48,0.13)',
+        boxShadow: isMax ? '0 0 24px rgba(240,112,48,0.12)' : '0 2px 8px rgba(0,0,0,0.5)',
       }}
     >
       <div className="px-4 pt-4 pb-3">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2.5">
-            <span style={{ color: 'rgba(167,139,248,0.7)', display: 'flex', alignItems: 'center' }}>
+            <span style={{ color: 'rgba(249,163,112,0.7)', display: 'flex', alignItems: 'center' }}>
               {SKILL_ICONS[skill.id]}
             </span>
             <div>
@@ -175,7 +175,7 @@ function SkillCard({
           {isMax ? (
             <div
               className="px-2.5 py-1 rounded-full text-[10px] font-bold"
-              style={{ background: 'rgba(167,139,248,0.12)', color: '#a78bf8', border: '1px solid rgba(167,139,248,0.25)' }}
+              style={{ background: 'rgba(249,163,112,0.12)', color: '#a78bf8', border: '1px solid rgba(249,163,112,0.25)' }}
             >
               ✓ Mastered
             </div>
@@ -188,13 +188,13 @@ function SkillCard({
         </div>
 
         {/* Progress bar */}
-        <div className="h-1.5 rounded-full mb-4" style={{ background: 'rgba(124,90,246,0.1)' }}>
+        <div className="h-1.5 rounded-full mb-4" style={{ background: 'rgba(240,112,48,0.1)' }}>
           <div
             className="h-full rounded-full"
             style={{
               width: `${pct}%`,
               background: 'linear-gradient(90deg, #7c5af6, #a78bf8)',
-              boxShadow: pct > 0 ? '0 0 8px rgba(124,90,246,0.5)' : 'none',
+              boxShadow: pct > 0 ? '0 0 8px rgba(240,112,48,0.5)' : 'none',
               transition: 'width 500ms cubic-bezier(0.34,1.56,0.64,1)',
             }}
           />
@@ -210,8 +210,8 @@ function SkillCard({
                 background: i < stage
                   ? '#7c5af6'
                   : i === stage
-                    ? 'rgba(124,90,246,0.4)'
-                    : 'rgba(124,90,246,0.08)',
+                    ? 'rgba(240,112,48,0.4)'
+                    : 'rgba(240,112,48,0.08)',
                 transition: 'background 300ms ease',
               }}
             />
@@ -221,9 +221,9 @@ function SkillCard({
         {/* Current stage */}
         <div
           className="rounded-xl px-3 py-2.5 mb-3"
-          style={{ background: 'rgba(124,90,246,0.07)', border: '1px solid rgba(124,90,246,0.12)' }}
+          style={{ background: 'rgba(240,112,48,0.07)', border: '1px solid rgba(240,112,48,0.12)' }}
         >
-          <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'rgba(167,139,248,0.55)' }}>
+          <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'rgba(249,163,112,0.55)' }}>
             {isMax ? '✦ Completed' : 'Current milestone'}
           </p>
           <p className="text-sm text-white" style={{ letterSpacing: '-0.01em' }}>{currentStage}</p>
@@ -246,13 +246,13 @@ function SkillCard({
               onClick={onRevert}
               className="flex-1 py-2.5 rounded-full text-xs font-semibold"
               style={{
-                background: 'rgba(124,90,246,0.07)',
-                border: '1px solid rgba(124,90,246,0.14)',
+                background: 'rgba(240,112,48,0.07)',
+                border: '1px solid rgba(240,112,48,0.14)',
                 color: 'rgba(255,255,255,0.45)',
                 transition: 'color 150ms ease, background 150ms ease',
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#fff'; (e.currentTarget as HTMLElement).style.background = 'rgba(124,90,246,0.12)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.45)'; (e.currentTarget as HTMLElement).style.background = 'rgba(124,90,246,0.07)'; }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#fff'; (e.currentTarget as HTMLElement).style.background = 'rgba(240,112,48,0.12)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.45)'; (e.currentTarget as HTMLElement).style.background = 'rgba(240,112,48,0.07)'; }}
             >
               ← Go back
             </button>
@@ -263,7 +263,7 @@ function SkillCard({
               className="flex-[2] py-2.5 rounded-full text-xs font-bold text-white"
               style={{
                 background: 'linear-gradient(135deg, #7c5af6 0%, #6646e0 100%)',
-                boxShadow: '0 0 20px rgba(124,90,246,0.35)',
+                boxShadow: '0 0 20px rgba(240,112,48,0.35)',
                 transition: 'opacity 150ms ease, transform 100ms ease',
               }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.88'; }}
@@ -311,7 +311,7 @@ export default function SkillsView({ userId, progressions }: { userId: string; p
     <div className="min-h-dvh px-4 pt-20 pb-10">
       {/* Header */}
       <div className="anim-fade-up mb-5">
-        <p className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: 'rgba(167,139,248,0.65)' }}>Skills</p>
+        <p className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: 'rgba(249,163,112,0.65)' }}>Skills</p>
         <h1 className="text-2xl font-bold text-white" style={{ letterSpacing: '-0.03em' }}>Skill tracker</h1>
       </div>
 
@@ -320,8 +320,8 @@ export default function SkillsView({ userId, progressions }: { userId: string; p
         className="anim-fade-up-1 rounded-3xl p-4 mb-5"
         style={{
           background: 'linear-gradient(160deg, rgba(20,16,50,0.9) 0%, rgba(14,11,36,0.95) 100%)',
-          border: '1px solid rgba(124,90,246,0.18)',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.5), 0 0 40px rgba(124,90,246,0.06)',
+          border: '1px solid rgba(240,112,48,0.18)',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.5), 0 0 40px rgba(240,112,48,0.06)',
         }}
       >
         <div className="flex items-center gap-5">
@@ -344,10 +344,10 @@ export default function SkillsView({ userId, progressions }: { userId: string; p
                 const p = (s / skill.stages.length) * 100;
                 return (
                   <div key={skill.id} className="flex items-center gap-2">
-                    <span style={{ width: 16, color: 'rgba(167,139,248,0.5)', display: 'flex', alignItems: 'center', flexShrink: 0, transform: 'scale(0.75)', transformOrigin: 'left center' }}>
+                    <span style={{ width: 16, color: 'rgba(249,163,112,0.5)', display: 'flex', alignItems: 'center', flexShrink: 0, transform: 'scale(0.75)', transformOrigin: 'left center' }}>
                       {SKILL_ICONS[skill.id]}
                     </span>
-                    <div style={{ flex: 1, height: 3, background: 'rgba(124,90,246,0.1)', borderRadius: 99, overflow: 'hidden' }}>
+                    <div style={{ flex: 1, height: 3, background: 'rgba(240,112,48,0.1)', borderRadius: 99, overflow: 'hidden' }}>
                       <div style={{
                         height: '100%', width: `${p}%`,
                         background: p >= 100 ? 'linear-gradient(90deg, #a78bf8, #c4b5fd)' : 'linear-gradient(90deg, #7c5af6, #a78bf8)',
@@ -366,7 +366,7 @@ export default function SkillsView({ userId, progressions }: { userId: string; p
       {/* Quote */}
       <div
         className="anim-fade-up-2 rounded-2xl px-4 py-3 mb-5"
-        style={{ background: 'rgba(124,90,246,0.05)', border: '1px solid rgba(124,90,246,0.1)' }}
+        style={{ background: 'rgba(240,112,48,0.05)', border: '1px solid rgba(240,112,48,0.1)' }}
       >
         <p className="text-sm italic" style={{ color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>
           &ldquo;{quote.text}&rdquo;
@@ -375,7 +375,7 @@ export default function SkillsView({ userId, progressions }: { userId: string; p
       </div>
 
       {/* Skill cards */}
-      <p className="text-[10px] font-bold tracking-widest uppercase mb-3" style={{ color: 'rgba(167,139,248,0.45)' }}>Your skills</p>
+      <p className="text-[10px] font-bold tracking-widest uppercase mb-3" style={{ color: 'rgba(249,163,112,0.45)' }}>Your skills</p>
       <div className="flex flex-col gap-3">
         {SKILLS.map((skill, i) => (
           <div key={skill.id} className="anim-fade-up" style={{ animationDelay: `${i * 0.07}s` }}>

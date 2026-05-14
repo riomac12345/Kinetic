@@ -27,6 +27,7 @@ function playBeep() {
   } catch {}
 }
 
+/* ── Rest timer ── */
 function RestTimer({ seconds, onDone }: { seconds: number; onDone: () => void }) {
   const [remaining, setRemaining] = useState(seconds);
 
@@ -37,50 +38,70 @@ function RestTimer({ seconds, onDone }: { seconds: number; onDone: () => void })
   }, [remaining, onDone]);
 
   const pct = ((seconds - remaining) / seconds) * 100;
-  const r = 44;
-  const circ = 2 * Math.PI * r;
+  const radius = 44;
+  const circ = 2 * Math.PI * radius;
+  const offset = circ - (pct / 100) * circ;
 
   return (
-    <div className="flex flex-col items-center py-10">
-      <p className="text-[10px] font-bold tracking-widest uppercase mb-6" style={{ color: 'rgba(167,139,248,0.6)' }}>Rest</p>
-      <div className="relative mb-6 anim-float" style={{ width: 120, height: 120 }}>
-        <svg className="absolute inset-0 -rotate-90" width="120" height="120" viewBox="0 0 120 120">
-          <circle cx="60" cy="60" r={r} fill="none" stroke="rgba(124,90,246,0.1)" strokeWidth="5" />
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '36px 24px' }}>
+      <p style={{
+        fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 700,
+        letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 28,
+      }}>Rest</p>
+
+      {/* Circular progress */}
+      <div style={{ position: 'relative', marginBottom: 28 }}>
+        <svg width={100} height={100} style={{ transform: 'rotate(-90deg)' }}>
+          <circle cx={50} cy={50} r={radius} fill="none" stroke="rgba(240,112,48,0.12)" strokeWidth={4} />
           <circle
-            cx="60" cy="60" r={r} fill="none"
-            stroke="#7c5af6" strokeWidth="5"
+            cx={50} cy={50} r={radius}
+            fill="none"
+            stroke="url(#restGrad)"
+            strokeWidth={4}
             strokeLinecap="round"
             strokeDasharray={circ}
-            strokeDashoffset={circ * (1 - pct / 100)}
-            style={{
-              transition: 'stroke-dashoffset 1s linear',
-              filter: 'drop-shadow(0 0 10px rgba(124,90,246,0.7))',
-            }}
+            strokeDashoffset={offset}
+            style={{ transition: 'stroke-dashoffset 1s linear' }}
           />
+          <defs>
+            <linearGradient id="restGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#F07030" />
+              <stop offset="100%" stopColor="#F59050" />
+            </linearGradient>
+          </defs>
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="font-bold text-white leading-none" style={{ fontSize: '36px', letterSpacing: '-0.04em' }}>
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <span style={{
+            fontFamily: 'var(--font-mono)', fontSize: 28, fontWeight: 600,
+            color: 'var(--text)', letterSpacing: '-0.04em', lineHeight: 1,
+          }}>
             {remaining}
           </span>
-          <span className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.35)' }}>sec</span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-3)' }}>sec</span>
         </div>
       </div>
+
       <button
         onClick={onDone}
-        className="text-xs font-semibold px-5 py-2 rounded-full"
         style={{
-          background: 'rgba(124,90,246,0.1)',
-          border: '1px solid rgba(124,90,246,0.18)',
-          color: 'rgba(255,255,255,0.55)',
-          transition: 'color 150ms ease, background 150ms ease',
+          padding: '10px 28px', borderRadius: 10,
+          background: 'rgba(240,112,48,0.1)',
+          border: '1px solid rgba(240,112,48,0.28)',
+          color: 'var(--text-2)', cursor: 'pointer',
+          fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700,
+          letterSpacing: '0.08em', textTransform: 'uppercase',
+          transition: 'all 160ms ease',
         }}
         onMouseEnter={e => {
-          (e.currentTarget as HTMLElement).style.color = '#ffffff';
-          (e.currentTarget as HTMLElement).style.background = 'rgba(124,90,246,0.18)';
+          (e.currentTarget as HTMLElement).style.borderColor = 'rgba(240,112,48,0.5)';
+          (e.currentTarget as HTMLElement).style.color = 'var(--accent-light)';
         }}
         onMouseLeave={e => {
-          (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.55)';
-          (e.currentTarget as HTMLElement).style.background = 'rgba(124,90,246,0.1)';
+          (e.currentTarget as HTMLElement).style.borderColor = 'rgba(240,112,48,0.28)';
+          (e.currentTarget as HTMLElement).style.color = 'var(--text-2)';
         }}
       >
         Skip rest
@@ -111,7 +132,6 @@ export default function LogSheet({
   const [prValue, setPrValue] = useState<number | null>(null);
   const [currentPR, setCurrentPR] = useState<number | null>(null);
 
-
   useEffect(() => {
     supabase
       .from('session_sets')
@@ -136,10 +156,7 @@ export default function LogSheet({
       .insert({ user_id: userId, date: today })
       .select('id')
       .single();
-    if (data) {
-      onSessionCreated(data.id);
-      return data.id;
-    }
+    if (data) { onSessionCreated(data.id); return data.id; }
     throw new Error('Failed to create session');
   }
 
@@ -147,14 +164,12 @@ export default function LogSheet({
     setSaving(true);
     try {
       const sid = await ensureSession();
-
       const { data: historicalSets } = await supabase
         .from('session_sets')
         .select('reps, weight, hold_time_seconds, session_exercises!inner(exercise_id)')
         .eq('session_exercises.exercise_id', pe.exercises.id);
 
-      let currentBest = 0;
-      let historicalBest = 0;
+      let currentBest = 0, historicalBest = 0;
       if (type === 'timed') {
         currentBest = Math.max(...finalSets.map(s => s.hold_time_seconds ?? 0));
         historicalBest = historicalSets ? Math.max(0, ...historicalSets.map((s: { hold_time_seconds: number | null }) => s.hold_time_seconds ?? 0)) : 0;
@@ -173,17 +188,13 @@ export default function LogSheet({
         .select('id')
         .single();
       if (!seData) throw new Error();
-      await supabase.from('session_sets').insert(
-        finalSets.map(s => ({ session_exercise_id: seData.id, ...s }))
-      );
+      await supabase.from('session_sets').insert(finalSets.map(s => ({ session_exercise_id: seData.id, ...s })));
 
       if (prHit) { setIsPR(true); setPrValue(currentBest); }
       setDone(true);
       onLogged?.(pe.exercises.id);
-      setTimeout(onClose, prHit ? 2500 : 900);
-    } catch {
-      setSaving(false);
-    }
+      setTimeout(onClose, prHit ? 3000 : 1000);
+    } catch { setSaving(false); }
   }, []);
 
   async function logSet() {
@@ -194,7 +205,6 @@ export default function LogSheet({
     };
     const newSets = [...loggedSets, set];
     setLoggedSets(newSets);
-
     if (currentSet >= totalSets) {
       await saveAndFinish(newSets);
     } else {
@@ -202,61 +212,94 @@ export default function LogSheet({
     }
   }
 
-  function afterRest() {
-    setResting(false);
-    setCurrentSet(s => s + 1);
-  }
+  function afterRest() { setResting(false); setCurrentSet(s => s + 1); }
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '18px 12px', borderRadius: 12,
+    background: 'rgba(255, 255, 255, 0.8)',
+    border: '1px solid rgba(240,112,48,0.22)',
+    color: 'var(--text)', outline: 'none',
+    fontFamily: 'var(--font-mono)', fontSize: 46, fontWeight: 500,
+    letterSpacing: '-0.03em', textAlign: 'center' as const,
+    transition: 'border-color 160ms ease, box-shadow 160ms ease',
+  };
+
+  /* ── Done state ── */
   if (done) {
-    const prUnit = type === 'timed' ? 's' : type === 'weighted' ? 'kg' : 'reps';
+    const prUnit = type === 'timed' ? 's' : type === 'weighted' ? 'kg' : ' reps';
     return (
       <div className="fixed inset-0 z-50 flex items-end">
         <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
         <div
-          className="anim-slide-up relative w-full rounded-t-[2rem] flex flex-col items-center py-14"
+          className="anim-slide-up relative w-full flex flex-col items-center"
           style={{
-            background: isPR ? 'linear-gradient(160deg, #120f2a 0%, #0e0b24 100%)' : 'linear-gradient(160deg, #120f2a 0%, #0e0b24 100%)',
-            border: isPR ? '1px solid rgba(251,191,36,0.25)' : '1px solid rgba(124,90,246,0.2)',
-            boxShadow: isPR ? '0 -24px 80px rgba(251,191,36,0.1)' : '0 -24px 80px rgba(124,90,246,0.15)',
+            background: 'rgba(255, 255, 255, 0.98)',
+            borderTop: '1px solid rgba(240,112,48,0.25)',
+            borderRadius: '20px 20px 0 0',
+            padding: '44px 24px 60px',
           }}
         >
           {isPR ? (
             <>
-              <div
-                className="anim-glow w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
-                style={{ background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.25)' }}
-              >
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-                  <path d="M4 22h16" />
-                  <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
-                  <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
-                  <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+              {/* PR ambient glow */}
+              <div style={{
+                position: 'absolute',
+                top: 0, left: '20%', right: '20%', height: 2,
+                background: 'linear-gradient(90deg, transparent, #F07030, #F59050, transparent)',
+                borderRadius: '0 0 4px 4px',
+              }} />
+              <div className="anim-pr-burst" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '6px 16px', marginBottom: 20, borderRadius: 20,
+                background: 'linear-gradient(135deg, rgba(240,112,48,0.25) 0%, rgba(168,124,255,0.15) 100%)',
+                border: '1px solid rgba(240,112,48,0.5)',
+                boxShadow: '0 0 30px rgba(240,112,48,0.4)',
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" strokeWidth="2.5" strokeLinecap="round">
+                  <polyline points="18 15 12 9 6 15"/>
                 </svg>
+                <span style={{
+                  fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700,
+                  letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--accent-light)',
+                }}>
+                  New Record
+                </span>
               </div>
-              <div className="px-3.5 py-1.5 rounded-full text-[11px] font-bold tracking-wider uppercase mb-4"
-                style={{ background: 'rgba(251,191,36,0.12)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.25)' }}>
-                Personal Record
-              </div>
-              <p className="font-bold text-white mb-1" style={{ fontSize: '48px', letterSpacing: '-0.04em', lineHeight: 1 }}>
-                {prValue}<span className="text-2xl ml-1" style={{ color: 'rgba(255,255,255,0.3)' }}>{prUnit}</span>
+              <p style={{
+                fontFamily: 'var(--font-mono)', fontSize: 72, fontWeight: 600,
+                letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 6,
+                background: 'linear-gradient(135deg, #16141F 0%, #F59050 100%)',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+              }}>
+                {prValue}<span style={{ fontSize: 28 }}>{prUnit}</span>
               </p>
-              <p className="text-sm mt-2" style={{ color: 'rgba(255,255,255,0.4)' }}>{pe.exercises.name}</p>
+              <p style={{
+                fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em',
+                textTransform: 'uppercase', color: 'var(--text-2)', marginTop: 10,
+              }}>{pe.exercises.name}</p>
             </>
           ) : (
             <>
-              <div
-                className="anim-glow w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
-                style={{ background: 'rgba(124,90,246,0.12)', border: '1px solid rgba(124,90,246,0.25)' }}
-              >
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#a78bf8" strokeWidth="2" strokeLinecap="round">
-                  <polyline points="20 6 9 17 4 12" />
+              <div style={{
+                width: 56, height: 56, borderRadius: 14, marginBottom: 18,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'linear-gradient(135deg, rgba(240,112,48,0.25) 0%, rgba(168,124,255,0.15) 100%)',
+                border: '1px solid rgba(240,112,48,0.4)',
+                boxShadow: '0 0 24px rgba(240,112,48,0.3)',
+              }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" strokeWidth="2.5" strokeLinecap="round">
+                  <polyline points="20 6 9 17 4 12"/>
                 </svg>
               </div>
-              <p className="text-xl font-bold text-white mb-1" style={{ letterSpacing: '-0.03em' }}>
+              <p style={{
+                fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700,
+                letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text)', marginBottom: 8,
+              }}>
                 {pe.exercises.name}
               </p>
-              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>{totalSets} sets logged</p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-3)' }}>
+                {totalSets} sets logged
+              </p>
             </>
           )}
         </div>
@@ -264,180 +307,192 @@ export default function LogSheet({
     );
   }
 
+  /* ── Main sheet ── */
   return (
     <div className="fixed inset-0 z-50 flex items-end">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
       <div
-        className="anim-slide-up relative w-full rounded-t-[2rem] flex flex-col"
+        className="anim-slide-up relative w-full flex flex-col"
         style={{
-          background: 'linear-gradient(160deg, #120f2a 0%, #0e0b24 100%)',
-          border: '1px solid rgba(124,90,246,0.18)',
-          boxShadow: '0 -8px 60px rgba(0,0,0,0.8), 0 -2px 0 rgba(124,90,246,0.2)',
-          maxHeight: '88vh',
+          background: 'rgba(248, 250, 252, 0.97)',
+          borderTop: '1px solid rgba(240,112,48,0.2)',
+          borderRadius: '20px 20px 0 0',
+          maxHeight: '90vh', overflow: 'hidden',
         }}
       >
+        {/* Top glow line */}
+        <div style={{
+          position: 'absolute',
+          top: 0, left: '25%', right: '25%', height: 1,
+          background: 'linear-gradient(90deg, transparent, rgba(240,112,48,0.6), transparent)',
+        }} />
+
         {/* Handle */}
-        <div className="flex justify-center pt-3.5 pb-1">
-          <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(124,90,246,0.25)' }} />
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '14px 0 4px' }}>
+          <div style={{ width: 38, height: 3, background: 'rgba(240,112,48,0.25)', borderRadius: 2 }} />
         </div>
 
         {/* Header */}
-        <div className="px-6 pt-4 pb-3 flex items-start justify-between">
+        <div style={{
+          padding: '14px 24px 14px',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+          borderBottom: '1px solid rgba(240,112,48,0.1)',
+        }}>
           <div>
-            <p className="text-xl font-bold text-white" style={{ letterSpacing: '-0.03em' }}>
+            <p style={{
+              fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700,
+              letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text)', lineHeight: 1,
+            }}>
               {pe.exercises.name}
             </p>
-            <div className="flex items-center gap-3 mt-1">
-              <p className="text-xs font-medium" style={{ color: 'rgba(167,139,248,0.6)' }}>
-                Set {currentSet} of {totalSets}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 6 }}>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-3)' }}>
+                Set {currentSet} / {totalSets}
               </p>
               {currentPR !== null && (
-                <div className="flex items-center gap-1" style={{ color: '#fbbf24' }}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
-                    <path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
-                  </svg>
-                  <span style={{ fontSize: 11, fontWeight: 700 }}>
-                    PR {currentPR}{type === 'timed' ? 's' : type === 'weighted' ? 'kg' : ' reps'}
-                  </span>
-                </div>
+                <span style={{
+                  fontFamily: 'var(--font-mono)', fontSize: 11,
+                  color: 'var(--accent-light)',
+                  padding: '2px 7px', borderRadius: 4,
+                  background: 'var(--accent-bg)', border: '1px solid var(--accent-border)',
+                }}>
+                  PR {currentPR}{type === 'timed' ? 's' : type === 'weighted' ? 'kg' : ' reps'}
+                </span>
               )}
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full flex items-center justify-center"
             style={{
-              background: 'rgba(124,90,246,0.08)',
-              border: '1px solid rgba(124,90,246,0.14)',
-              color: 'rgba(255,255,255,0.5)',
-              transition: 'background 150ms ease, color 150ms ease',
+              width: 34, height: 34, borderRadius: 9,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(240,112,48,0.08)',
+              border: '1px solid rgba(240,112,48,0.2)',
+              color: 'var(--text-2)', cursor: 'pointer',
+              transition: 'all 160ms ease',
             }}
             onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(124,90,246,0.16)';
-              (e.currentTarget as HTMLElement).style.color = '#ffffff';
+              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(240,112,48,0.4)';
+              (e.currentTarget as HTMLElement).style.color = 'var(--text)';
             }}
             onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(124,90,246,0.08)';
-              (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.5)';
+              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(240,112,48,0.2)';
+              (e.currentTarget as HTMLElement).style.color = 'var(--text-2)';
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
           </button>
         </div>
 
-        {/* Progress bars */}
-        <div className="flex items-center gap-1.5 px-6 pb-5">
+        {/* Set progress dots */}
+        <div style={{ display: 'flex', gap: 4, padding: '12px 24px 4px' }}>
           {[...Array(totalSets)].map((_, i) => (
-            <div
-              key={i}
-              className="h-1.5 rounded-full flex-1"
-              style={{
-                background: i < loggedSets.length
-                  ? '#7c5af6'
-                  : i === currentSet - 1
-                    ? 'rgba(124,90,246,0.35)'
-                    : 'rgba(124,90,246,0.1)',
-                transition: 'background 300ms ease',
-                boxShadow: i < loggedSets.length ? '0 0 8px rgba(124,90,246,0.6)' : 'none',
-              }}
-            />
+            <div key={i} style={{
+              flex: 1, height: 3, borderRadius: 2,
+              background: i < loggedSets.length
+                ? 'linear-gradient(90deg, #F07030, #F59050)'
+                : i === currentSet - 1
+                  ? 'rgba(240,112,48,0.4)'
+                  : 'rgba(240,112,48,0.12)',
+              boxShadow: i < loggedSets.length ? '0 0 6px rgba(240,112,48,0.4)' : 'none',
+              transition: 'background 300ms ease, box-shadow 300ms ease',
+            }} />
           ))}
         </div>
 
         {resting ? (
           <RestTimer seconds={pe.rest_timer_seconds} onDone={afterRest} />
         ) : (
-          <div className="px-6 pb-10">
+          <div style={{ padding: '16px 24px 44px' }}>
+            {/* PR alert */}
             {(() => {
-              const inputVal = type === 'timed'
-                ? (parseInt(holdTime) || 0)
-                : type === 'weighted'
-                  ? (parseFloat(weight) || 0)
-                  : (parseInt(reps) || 0);
+              const inputVal = type === 'timed' ? (parseInt(holdTime) || 0) : type === 'weighted' ? (parseFloat(weight) || 0) : (parseInt(reps) || 0);
               const beatsPR = currentPR !== null && inputVal > currentPR && inputVal > 0;
               return beatsPR ? (
-                <div className="mb-4 px-4 py-2.5 rounded-2xl flex items-center gap-2" style={{
-                  background: 'rgba(251,191,36,0.08)',
-                  border: '1px solid rgba(251,191,36,0.25)',
-                  boxShadow: '0 0 20px rgba(251,191,36,0.1)',
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '10px 16px', marginBottom: 18, borderRadius: 10,
+                  background: 'var(--accent-bg)', border: '1px solid var(--accent-border)',
+                  boxShadow: '0 0 16px rgba(240,112,48,0.2)',
                 }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
-                    <path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" strokeWidth="2.5" strokeLinecap="round">
+                    <polyline points="18 15 12 9 6 15"/>
                   </svg>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24' }}>
-                    New PR! Beats your {currentPR}{type === 'timed' ? 's' : type === 'weighted' ? 'kg' : ' reps'} record
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--accent-light)' }}>
+                    New record — beats {currentPR}{type === 'timed' ? 's' : type === 'weighted' ? 'kg' : ' reps'}
                   </p>
                 </div>
               ) : null;
             })()}
-            <div className="grid grid-cols-2 gap-3 mb-8">
+
+            {/* Input grid */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: type === 'weighted' ? '1fr 1fr' : '1fr',
+              gap: 12, marginBottom: 24,
+            }}>
               {type !== 'timed' && (
                 <div>
-                  <label className="block text-[10px] font-bold tracking-widest uppercase mb-3" style={{ color: 'rgba(167,139,248,0.6)' }}>
-                    Reps
-                  </label>
+                  <label style={{
+                    display: 'block', fontFamily: 'var(--font-display)',
+                    fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                    color: 'var(--text-3)', marginBottom: 8,
+                  }}>Reps</label>
                   <input
-                    type="number"
-                    inputMode="numeric"
-                    value={reps}
-                    onChange={e => setReps(e.target.value)}
-                    className="w-full px-4 py-5 rounded-2xl font-bold text-white text-center outline-none"
-                    style={{
-                      fontSize: '40px', letterSpacing: '-0.04em',
-                      background: 'rgba(124,90,246,0.07)',
-                      border: '1px solid rgba(124,90,246,0.14)',
-                      transition: 'border-color 150ms ease',
+                    type="number" inputMode="numeric" value={reps}
+                    onChange={e => setReps(e.target.value)} style={inputStyle}
+                    onFocus={e => {
+                      e.currentTarget.style.borderColor = 'rgba(240,112,48,0.55)';
+                      e.currentTarget.style.boxShadow = '0 0 24px rgba(240,112,48,0.2)';
                     }}
-                    onFocus={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.5)')}
-                    onBlur={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.14)')}
+                    onBlur={e => {
+                      e.currentTarget.style.borderColor = 'rgba(240,112,48,0.22)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                   />
                 </div>
               )}
               {type === 'timed' && (
                 <div>
-                  <label className="block text-[10px] font-bold tracking-widest uppercase mb-3" style={{ color: 'rgba(167,139,248,0.6)' }}>
-                    Hold (s)
-                  </label>
+                  <label style={{
+                    display: 'block', fontFamily: 'var(--font-display)',
+                    fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                    color: 'var(--text-3)', marginBottom: 8,
+                  }}>Hold (s)</label>
                   <input
-                    type="number"
-                    inputMode="numeric"
-                    value={holdTime}
-                    onChange={e => setHoldTime(e.target.value)}
-                    className="w-full px-4 py-5 rounded-2xl font-bold text-white text-center outline-none"
-                    style={{
-                      fontSize: '40px', letterSpacing: '-0.04em',
-                      background: 'rgba(124,90,246,0.07)',
-                      border: '1px solid rgba(124,90,246,0.14)',
-                      transition: 'border-color 150ms ease',
+                    type="number" inputMode="numeric" value={holdTime}
+                    onChange={e => setHoldTime(e.target.value)} style={inputStyle}
+                    onFocus={e => {
+                      e.currentTarget.style.borderColor = 'rgba(0,212,255,0.55)';
+                      e.currentTarget.style.boxShadow = '0 0 24px rgba(0,212,255,0.15)';
                     }}
-                    onFocus={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.5)')}
-                    onBlur={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.14)')}
+                    onBlur={e => {
+                      e.currentTarget.style.borderColor = 'rgba(240,112,48,0.22)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                   />
                 </div>
               )}
               {type === 'weighted' && (
                 <div>
-                  <label className="block text-[10px] font-bold tracking-widest uppercase mb-3" style={{ color: 'rgba(167,139,248,0.6)' }}>
-                    kg
-                  </label>
+                  <label style={{
+                    display: 'block', fontFamily: 'var(--font-display)',
+                    fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                    color: 'var(--text-3)', marginBottom: 8,
+                  }}>kg</label>
                   <input
-                    type="number"
-                    inputMode="decimal"
-                    value={weight}
-                    onChange={e => setWeight(e.target.value)}
-                    className="w-full px-4 py-5 rounded-2xl font-bold text-white text-center outline-none"
-                    style={{
-                      fontSize: '40px', letterSpacing: '-0.04em',
-                      background: 'rgba(124,90,246,0.07)',
-                      border: '1px solid rgba(124,90,246,0.14)',
-                      transition: 'border-color 150ms ease',
+                    type="number" inputMode="decimal" value={weight}
+                    onChange={e => setWeight(e.target.value)} style={inputStyle}
+                    onFocus={e => {
+                      e.currentTarget.style.borderColor = 'rgba(255,107,53,0.55)';
+                      e.currentTarget.style.boxShadow = '0 0 24px rgba(255,107,53,0.15)';
                     }}
-                    onFocus={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.5)')}
-                    onBlur={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.14)')}
+                    onBlur={e => {
+                      e.currentTarget.style.borderColor = 'rgba(240,112,48,0.22)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                   />
                 </div>
               )}
@@ -446,18 +501,20 @@ export default function LogSheet({
             <button
               onClick={logSet}
               disabled={saving}
-              className="anim-glow w-full py-5 rounded-full font-bold text-white disabled:opacity-50"
               style={{
-                fontSize: '16px',
-                background: 'linear-gradient(135deg, #7c5af6 0%, #6646e0 100%)',
-                boxShadow: '0 0 36px rgba(124,90,246,0.45), 0 4px 20px rgba(0,0,0,0.6)',
-                transition: 'opacity 150ms ease, transform 100ms cubic-bezier(0.34,1.56,0.64,1)',
-                letterSpacing: '-0.01em',
+                width: '100%', padding: '16px 24px', borderRadius: 12,
+                background: saving
+                  ? 'rgba(240,112,48,0.15)'
+                  : 'linear-gradient(135deg, #F07030 0%, #F59050 100%)',
+                border: 'none', cursor: saving ? 'not-allowed' : 'pointer',
+                fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700,
+                letterSpacing: '0.1em', textTransform: 'uppercase',
+                color: saving ? 'var(--text-3)' : 'white',
+                boxShadow: saving ? 'none' : '0 0 28px rgba(240,112,48,0.45)',
+                transition: 'all 160ms ease',
               }}
-              onMouseEnter={e => { if (!saving) (e.currentTarget as HTMLElement).style.opacity = '0.88'; }}
+              onMouseEnter={e => { if (!saving) (e.currentTarget as HTMLElement).style.opacity = '0.85'; }}
               onMouseLeave={e => { if (!saving) (e.currentTarget as HTMLElement).style.opacity = '1'; }}
-              onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.97)')}
-              onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
             >
               {saving ? 'Saving…' : currentSet >= totalSets ? 'Finish' : `Log set ${currentSet}`}
             </button>

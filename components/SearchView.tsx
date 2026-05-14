@@ -39,79 +39,68 @@ export default function SearchView({
   }
 
   return (
-    <div className="min-h-dvh px-4 pt-20 pb-10">
-      <div className="anim-fade-up mb-5">
-        <p className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: 'rgba(167,139,248,0.65)' }}>Search</p>
-        <h1 className="text-2xl font-bold text-white" style={{ letterSpacing: '-0.03em' }}>Find athletes</h1>
+    <div style={{ minHeight: '100dvh', padding: '0 20px 48px' }}>
+      <div className="anim-fade-up" style={{ paddingTop: 52, paddingBottom: 24, borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
+        <p style={{ fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 8 }}>Search</p>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(48px, 12vw, 72px)', fontWeight: 800, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--text)', lineHeight: 0.95 }}>
+          Find Athletes
+        </h1>
       </div>
 
-      <div className="anim-fade-up-1 relative mb-5">
-        <div className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'rgba(167,139,248,0.5)' }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-        </div>
+      <div className="anim-fade-up-1" style={{ position: 'relative', marginBottom: 16 }}>
+        <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)', pointerEvents: 'none', display: 'flex' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+        </span>
         <input
           type="text"
           value={query}
           onChange={e => search(e.target.value)}
           placeholder="Search by username…"
-          className="w-full pl-10 pr-4 py-3.5 rounded-2xl text-sm text-white outline-none"
           style={{
-            background: 'rgba(124,90,246,0.07)',
-            border: '1px solid rgba(124,90,246,0.18)',
-            transition: 'border-color 150ms ease',
+            width: '100%', boxSizing: 'border-box',
+            paddingLeft: 36, paddingRight: 16, paddingTop: 11, paddingBottom: 11,
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text)',
+            outline: 'none', transition: 'border-color 150ms ease',
           }}
-          onFocus={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.45)')}
-          onBlur={e => (e.currentTarget.style.borderColor = 'rgba(124,90,246,0.18)')}
+          onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-2)')}
+          onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
         />
+        {isPending && (
+          <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)', fontFamily: 'var(--font-mono)', fontSize: 10 }}>…</span>
+        )}
       </div>
 
       {query.length > 0 && query.length < 2 && (
-        <p className="text-xs text-center py-4" style={{ color: 'rgba(255,255,255,0.35)' }}>Type at least 2 characters to search.</p>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-3)', textAlign: 'center', padding: '16px 0' }}>Type at least 2 characters to search.</p>
       )}
-
       {query.length >= 2 && results.length === 0 && !isPending && (
-        <p className="text-sm text-center py-12" style={{ color: 'rgba(255,255,255,0.35)' }}>No users found for &quot;{query}&quot;</p>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-3)', textAlign: 'center', padding: '40px 0' }}>No users found for &quot;{query}&quot;</p>
       )}
 
-      <div className="flex flex-col gap-2">
+      <div>
         {results.map((profile, i) => {
           const isFollowing = followState.has(profile.id);
           return (
-            <div
-              key={profile.id}
-              className="anim-fade-up flex items-center gap-3 px-4 py-3.5 rounded-2xl"
-              style={{
-                animationDelay: `${i * 0.06}s`,
-                background: 'rgba(124,90,246,0.05)',
-                border: '1px solid rgba(124,90,246,0.1)',
-              }}
-            >
-              <Link href={`/profile/${profile.username}`}>
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                  style={{
-                    background: 'rgba(124,90,246,0.1)',
-                    border: '1px solid rgba(124,90,246,0.18)',
-                    color: '#a78bf8',
-                  }}
-                >
+            <div key={profile.id} className="anim-fade-up" style={{ animationDelay: `${i * 0.05}s`, display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+              <Link href={`/profile/${profile.username}`} style={{ textDecoration: 'none' }}>
+                <div style={{ width: 36, height: 36, background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 800, color: 'var(--accent)' }}>
                   {(profile.name || profile.username || '?')[0].toUpperCase()}
                 </div>
               </Link>
-              <Link href={`/profile/${profile.username}`} className="flex-1 min-w-0" style={{ textDecoration: 'none' }}>
-                <p className="text-sm font-semibold text-white" style={{ letterSpacing: '-0.01em' }}>
-                  {profile.name ?? profile.username}
-                </p>
-                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>@{profile.username}</p>
+              <Link href={`/profile/${profile.username}`} style={{ flex: 1, minWidth: 0, textDecoration: 'none' }}>
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.01em' }}>{profile.name ?? profile.username}</p>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>@{profile.username}</p>
               </Link>
               <button
                 onClick={() => toggleFollow(profile.id)}
-                className="px-4 py-2 rounded-full text-xs font-bold"
                 style={{
-                  background: isFollowing ? 'transparent' : 'linear-gradient(135deg, #7c5af6 0%, #6646e0 100%)',
-                  color: isFollowing ? 'rgba(255,255,255,0.45)' : '#fff',
-                  border: isFollowing ? '1px solid rgba(124,90,246,0.18)' : 'none',
-                  boxShadow: isFollowing ? 'none' : '0 0 14px rgba(124,90,246,0.35)',
+                  padding: '7px 14px', flexShrink: 0,
+                  background: isFollowing ? 'transparent' : 'var(--accent)',
+                  border: `1px solid ${isFollowing ? 'var(--border)' : 'var(--accent)'}`,
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-display)', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+                  color: isFollowing ? 'var(--text-3)' : 'var(--bg)',
                   transition: 'all 150ms ease',
                 }}
               >
