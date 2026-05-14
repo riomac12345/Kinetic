@@ -822,7 +822,7 @@ function Ring({ value, goal, color, label, unit, size = 88, animDelay = 0 }: {
           filter: ready && pct > 0 ? `drop-shadow(0 0 6px ${strokeColor}60)` : 'none',
           transition: 'filter 800ms ease',
         }}>
-          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={sw} />
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(20,16,50,0.12)" strokeWidth={sw} />
           <circle
             cx={size/2} cy={size/2} r={r} fill="none"
             stroke={strokeColor} strokeWidth={sw + 1}
@@ -866,11 +866,11 @@ function NutritionRingsCard({ todayWellness, calorieGoal, proteinGoal, userId, o
   userId?: string;
   onLogged: (slot: string, nutrition: NutritionData) => void;
 }) {
-  let totalCal = 0, totalPro = 0;
+  let totalCal = 0, totalPro = 0, totalSugar = 0;
   if (todayWellness) {
     for (const slot of MEAL_SLOTS) {
       const n = todayWellness[slot.key];
-      if (n) { totalCal += n.calories; totalPro += n.protein; }
+      if (n) { totalCal += n.calories; totalPro += n.protein; totalSugar += (n as NutritionData & { sugars?: number }).sugars ?? 0; }
     }
   }
 
@@ -880,17 +880,14 @@ function NutritionRingsCard({ todayWellness, calorieGoal, proteinGoal, userId, o
       marginBottom: 14, padding: '8px 0 16px',
       borderBottom: '1px solid rgba(255,255,255,0.05)',
     }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 1 }}>Nutrition</p>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-2)' }}>Today</p>
-        </div>
-        <QuickPhotoLog userId={userId} todayWellness={todayWellness} onLogged={onLogged} compact />
-      </div>
+      {/* Log button — left */}
+      <QuickPhotoLog userId={userId} todayWellness={todayWellness} onLogged={onLogged} compact />
 
-      <Link href="/nutrition" style={{ display: 'flex', alignItems: 'flex-start', gap: 18, textDecoration: 'none', marginRight: '15%' }}>
-        <Ring value={totalCal} goal={calorieGoal} color="#F07030" label="Calories" unit="kcal" size={90} animDelay={0} />
-        <Ring value={totalPro} goal={proteinGoal} color="var(--blue)" label="Protein" unit="g" size={90} animDelay={120} />
+      {/* Sugar, Calories, Protein — right */}
+      <Link href="/nutrition" style={{ display: 'flex', alignItems: 'flex-start', gap: 18, textDecoration: 'none' }}>
+        <Ring value={totalSugar} goal={0} color="var(--warm)" label="Sugar" unit="g" size={90} animDelay={0} />
+        <Ring value={totalCal} goal={calorieGoal} color="#F07030" label="Calories" unit="kcal" size={90} animDelay={120} />
+        <Ring value={totalPro} goal={proteinGoal} color="var(--blue)" label="Protein" unit="g" size={90} animDelay={240} />
       </Link>
     </div>
   );

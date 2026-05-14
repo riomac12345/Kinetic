@@ -43,7 +43,7 @@ function RestTimer({ seconds, onDone }: { seconds: number; onDone: () => void })
   const offset = circ - (pct / 100) * circ;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '36px 24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '36px 24px', paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
       <p style={{
         fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 700,
         letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 28,
@@ -131,6 +131,12 @@ export default function LogSheet({
   const [isPR, setIsPR] = useState(false);
   const [prValue, setPrValue] = useState<number | null>(null);
   const [currentPR, setCurrentPR] = useState<number | null>(null);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
 
   useEffect(() => {
     supabase
@@ -236,7 +242,8 @@ export default function LogSheet({
             background: 'rgba(255, 255, 255, 0.98)',
             borderTop: '1px solid rgba(240,112,48,0.25)',
             borderRadius: '20px 20px 0 0',
-            padding: '44px 24px 60px',
+            padding: '44px 24px',
+            paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))',
           }}
         >
           {isPR ? (
@@ -405,7 +412,7 @@ export default function LogSheet({
         {resting ? (
           <RestTimer seconds={pe.rest_timer_seconds} onDone={afterRest} />
         ) : (
-          <div style={{ padding: '16px 24px 44px' }}>
+          <div style={{ padding: '16px 24px', paddingBottom: 'calc(72px + env(safe-area-inset-bottom, 0px))' }}>
             {/* PR alert */}
             {(() => {
               const inputVal = type === 'timed' ? (parseInt(holdTime) || 0) : type === 'weighted' ? (parseFloat(weight) || 0) : (parseInt(reps) || 0);
